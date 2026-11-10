@@ -1,0 +1,17 @@
+.gradle/
+build/
+.idea/
+out/
+*.iml
+.kotlin/
+
+# Local plugin state: keep the settings file committable, ignore the cache
+.dsh/*
+!.dsh/pycharm-assistant.json
+
+# Harness scratch directory
+.dsh-tmp/
+
+# OS noise
+.DS_Store
+Thumbs.db

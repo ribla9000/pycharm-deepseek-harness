@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --bg: #1e1f22;
+  --bg2: #26272b;
+  --text: #e8eaed;
+  --muted: #8f949c;
+  --border: #3a3d42;
+  --accent: #4b8bf5;
+  --green: #4caf7d;
+  --red: #d9564f;
+  --yellow: #d9a83c;
+  --blue: #5b8cff;
+  --hover: #2b2d30;
+  --sel: #2f3540;
+  --accent-soft: rgba(75,139,245,.18);
+  --folder: #d9a83c;
+  --shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+html[data-theme="light"] {
+  --bg: #ffffff; --bg2: #f6f7f8; --text: #1f2329; --muted: #8a8f98;
+  --border: #e3e5e8; --accent: #3b82f6; --green: #2e8b57; --red: #c0392b;
+  --yellow: #b9770e; --blue: #2e6bd8; --hover: #f0f1f3; --sel: #e8eef7;
+  --accent-soft: rgba(59,130,246,.14);
+  --folder: #b9770e;
+  --shadow: 0 4px 16px rgba(0,0,0,.15);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font: 12.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  background: var(--bg); color: var(--text);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+svg { vertical-align: -2px; flex: 0 0 auto; }
+/* icon wrapper: the SVG sets its own size, color comes from the parent's currentColor */
+.ic { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.ic.folder { color: var(--folder); }
+.ic.created { color: var(--green); }
+.ic.deleted { color: var(--red); }
+.ic.modified { color: var(--blue); }
+.ic.warn { color: var(--yellow); }
+
+/* header */
+.ch-head { display: flex; gap: 8px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--border); flex: 0 0 auto; flex-wrap: wrap; }
+#search {
+  flex: 1 1 220px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); padding: 4px 9px; font: inherit; outline: none; min-width: 150px;
+}
+#search:focus { border-color: var(--accent); }
+.counts { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+/* toolbar: both rows share the same height, everything is centered */
+.ch-toolbar {
+  display: flex; align-items: center; gap: 2px; row-gap: 2px;
+  padding: 3px 6px; border-bottom: 1px solid var(--border);
+  flex: 0 0 auto; flex-wrap: wrap;
+}
+/* a group is the wrap unit: in a narrow panel buttons of one group do not split,
+   and groups are separated by space, not by a rule (a rule hangs at the line end when wrapping) */
+.tb-group { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.tb-group + .tb-group { margin-inline-start: 10px; }
+.tb-label {
+  color: var(--muted); font-size: 11.5px; line-height: 1;
+  padding: 0 2px; white-space: nowrap; align-self: center;
+}
+.tbtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  background: none; border: none; color: var(--muted);
+  padding: 4px 6px; min-height: 24px; border-radius: 6px;
+  cursor: pointer; font: inherit; font-size: 12px; line-height: 1;
+  transition: background-color .1s ease-out, color .1s ease-out;
+}
+.tbtn.chip { font-size: 11.5px; padding: 3px 8px; }
+.tbtn:hover { background: var(--hover); color: var(--text); }
+.tbtn:disabled, .tbtn:disabled:hover { background: none; color: var(--muted); opacity: .35; cursor: default; }
+.tbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tbtn.on { color: var(--accent); background: var(--accent-soft); }
+.tbtn.on:hover { color: var(--accent); }
+.tbtn.accent { color: var(--green); }
+.tbtn.accent:hover { color: var(--green); }
+.tbtn.danger { color: var(--red); }
+.tbtn.danger:hover { color: var(--red); }
+
+/* tree */
+#tree { flex: 1 1 auto; overflow-y: auto; padding: 4px 0 8px; }
+#tree::-webkit-scrollbar { width: 9px; height: 9px; }
+#tree::-webkit-scrollbar-thumb { background: rgba(140,145,152,.35); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+#tree::-webkit-scrollbar-track { background: transparent; }
+
+.frow, .filerow {
+  display: flex; align-items: center; gap: 5px;
+  padding: 2px 10px; cursor: pointer; white-space: nowrap; user-select: none;
+}
+.frow:hover, .filerow:hover { background: var(--hover); }
+.frow .chev {
+  width: 12px; height: 12px; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--muted); transition: transform .12s ease-out;
+}
+.frow:hover .chev { color: var(--text); }
+.frow.open .chev { transform: rotate(90deg); }
+.fname { overflow: hidden; text-overflow: ellipsis; }
+.fcount { color: var(--muted); font-size: 11px; }
+.children { display: none; }
+.children.open { display: block; }
+.filerow.selected { background: var(--sel); }
+.filerow .fname { overflow: hidden; text-overflow: ellipsis; }
+.filerow .stats { color: var(--muted); font-size: 11px; margin-left: auto; }
+.filerow .tag { font-size: 10.5px; border-radius: 8px; padding: 0 6px; }
+.filerow .tag.acc { color: var(--green); border: 1px solid var(--green); }
+.filerow .tag.rej { color: var(--muted); border: 1px solid var(--border); text-decoration: line-through; }
+.filerow .tag.unav { color: var(--yellow); }
+.empty { color: var(--muted); text-align: center; padding: 14px 10px; white-space: pre-wrap; }
+.vhist { padding: 2px 0 4px; }
+.vhtoggle {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font: inherit; font-size: 11px; padding: 1px 4px; display: inline-flex; align-items: center; gap: 5px;
+}
+.vhtoggle:hover { color: var(--text); }
+.vlist { display: none; padding: 2px 0 2px 16px; }
+.vlist.open { display: block; }
+.vrow { display: flex; gap: 10px; align-items: center; padding: 2px 0; font-size: 11.5px; }
+.vrow button {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); cursor: pointer; font: inherit; font-size: 11px; padding: 0 7px;
+}
+.vrow button:hover { border-color: var(--accent); color: var(--accent); }
+
+/* checkpoints dropdown */
+.dd { position: relative; }
+.dd-menu {
+  position: fixed; z-index: 60;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: var(--shadow); padding: 4px; min-width: 190px;
+  display: none; max-height: 240px; overflow-y: auto;
+}
+.dd-menu.open { display: block; }
+.dd-menu button {
+  display: flex; width: 100%; text-align: left; border: none; background: none;
+  color: var(--text); padding: 6px 10px; border-radius: 6px; cursor: pointer;
+  font: inherit; font-size: 12.5px; align-items: center; gap: 6px;
+}
+.dd-menu button:hover { background: var(--hover); }
+</style>
+</head>
+<body>
+<div class="ch-head">
+  <input id="search" placeholder="Search changed files…" aria-label="Search changed files">
+  <span class="counts" id="counts"></span>
+</div>
+<div class="ch-toolbar" id="toolbar" role="toolbar" aria-label="Change actions"></div>
+<div class="ch-toolbar" id="viewbar" role="toolbar" aria-label="List view and filter">
+  <span class="tb-group">
+    <button class="tbtn" id="groupToggle" aria-pressed="true"></button>
+  </span>
+  <span class="tb-group">
+    <span class="tb-label" id="filterLabel">Show:</span>
+    <button class="tbtn chip" id="fAll" data-tip="Show all changes" aria-pressed="true">All</button>
+    <button class="tbtn chip" id="fPending" data-tip="Only pending changes" aria-pressed="false">Pending</button>
+    <button class="tbtn chip" id="fAccepted" data-tip="Only accepted changes" aria-pressed="false">Accepted</button>
+    <button class="tbtn chip" id="fRejected" data-tip="Only rejected changes" aria-pressed="false">Rejected</button>
+  </span>
+</div>
+<div id="tree"></div>
+<div class="dd-menu" id="cpMenu"></div>
+
+<script>
+(function () {
+  "use strict";
+  var INIT = window.DSH_INIT || {};
+  document.documentElement.dataset.theme = INIT.theme || "dark";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var entries = [];
+  var allEntries = [];
+  var selectedPath = null;
+  var collapsedDirs = {};   // collapsed folders: the state survives a re-render
+
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  var grouped = true;
+  var statusFilter = "ALL";
+
+  // ---------- custom tooltips (JCEF does not show title) ----------
+  // The position is computed in screen pixels and converted to layer coordinates:
+  // so the tooltip does not drift off the window edge and flips up when there is no room below.
+  var layerProbe = document.createElement("div");
+  layerProbe.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none";
+  document.body.appendChild(layerProbe);
+  var layerMap = { kx: 1, ky: 1, ox: 0, oy: 0 };
+  function calibrateLayer() {
+    layerProbe.style.left = "0px"; layerProbe.style.top = "0px";
+    var a = layerProbe.getBoundingClientRect();
+    layerProbe.style.left = "100px"; layerProbe.style.top = "100px";
+    var b = layerProbe.getBoundingClientRect();
+    var kx = (b.left - a.left) / 100, ky = (b.top - a.top) / 100;
+    layerMap = {
+      kx: (isFinite(kx) && kx > 0.01) ? kx : 1,
+      ky: (isFinite(ky) && ky > 0.01) ? ky : 1,
+      ox: a.left, oy: a.top
+    };
+  }
+  calibrateLayer();
+
+  var tipEl = document.createElement("div");
+  tipEl.style.cssText = "position:fixed;z-index:200;pointer-events:none;background:var(--bg2);color:var(--text);" +
+    "border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11.5px;display:none;" +
+    "max-width:340px;box-shadow:var(--shadow)";
+  document.body.appendChild(tipEl);
+
+  function placeTip(anchor) {
+    var m = 6, gap = 6;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    tipEl.style.maxHeight = Math.max(80, vh - 2 * m) + "px";
+    var r = tipEl.getBoundingClientRect();
+    var w = Math.min(r.width, Math.max(80, vw - 2 * m)), h = Math.min(r.height, Math.max(80, vh - 2 * m));
+    var below = anchor.bottom + gap, above = anchor.top - gap - h;
+    var top;
+    if (below + h <= vh - m) top = below;
+    else if (above >= m) top = above;
+    else top = Math.max(m, Math.min(below, vh - m - h));
+    var left = Math.max(m, Math.min(anchor.left, vw - m - w));
+    tipEl.style.left = ((left - layerMap.ox) / layerMap.kx) + "px";
+    tipEl.style.top = ((top - layerMap.oy) / layerMap.ky) + "px";
+    tipEl.style.right = "auto";
+    tipEl.style.bottom = "auto";
+  }
+  function hideTip() { tipEl.style.display = "none"; }
+  document.addEventListener("mouseover", function (e) {
+    var t = e.target.closest ? e.target.closest("[data-tip]") : null;
+    if (!t) return;
+    var text = t.getAttribute("data-tip");
+    if (!text) { hideTip(); return; }
+    tipEl.textContent = text;
+    tipEl.style.display = "block";
+    placeTip(t.getBoundingClientRect());
+  });
+  document.addEventListener("mouseout", function (e) {
+    var t = e.target.closest ? e.target.closest("[data-tip]") : null;
+    if (!t) return;
+    var to = e.relatedTarget;
+    if (to && (t === to || t.contains(to))) return;
+    hideTip();
+  });
+  document.addEventListener("mousedown", hideTip);
+  window.addEventListener("resize", function () { calibrateLayer(); hideTip(); });
+  document.addEventListener("scroll", hideTip, true);
+
+  // ---------- bridge ----------
+  function toJava(obj) {
+    var fn = INIT.queryFunc && window[INIT.queryFunc];
+    if (typeof fn === "function") {
+      fn({ request: JSON.stringify(obj), onSuccess: function () {}, onFailure: function (c, m) { console.error(c, m); } });
+    }
+  }
+
+  // ---------- icons ----------
+  // One set: a 24×24 system, the stroke is set in screen pixels (weight),
+  // so icons look equally dense at any size and match
+  // the weight of regular text (12.5px ≈ 1.5px stroke).
+  var P = {
+    accept: '<path d="M21 6 9.5 17.5 3 11"/>',
+    reject: '<path d="M19 5 5 19M5 5l14 14"/>',
+    acceptAll: '<path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/>',
+    rejectAll: '<path d="M10 7 2 15M2 7l8 8"/><path d="M22 9l-8 8M14 9l8 8"/>',
+    diff: '<rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M12 4.5v15"/>' +
+      '<path d="M5.5 12H9"/><path d="M15 12h3.5M16.75 10.25v3.5"/>',
+    open: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>' +
+      '<path d="M15 3h6v6"/><path d="M10 14 21 3"/>',
+    refresh: '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
+    clear: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>' +
+      '<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6M14 11v6"/>',
+    snapshot: '<path d="M21.5 19a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l2-3h5l2 3h3a2 2 0 0 1 2 2z"/>' +
+      '<circle cx="12" cy="13.5" r="4"/>',
+    rollback: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+    history: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.5 2"/>',
+    folder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+    list: '<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/>',
+    chev: '<path d="m9 6 6 6-6 6"/>',
+    created: '<path d="M12 5v14M5 12h14"/>',
+    deleted: '<path d="M5 12h14"/>',
+    modified: '<circle cx="12" cy="12" r="4.5" fill="currentColor" stroke="none"/>',
+    warn: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>' +
+      '<path d="M12 9v4M12 17h.01"/>'
+  };
+  function svgOf(name, size, weight) {
+    var sw = ((weight || 1.5) * 24 / size).toFixed(2);
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round">' + (P[name] || "") + '</svg>';
+  }
+  function icon(name, cls, size, weight) {
+    return '<span class="ic' + (cls ? " " + cls : "") + '">' + svgOf(name, size || 15, weight) + '</span>';
+  }
+  function iconEl(name, cls, size, weight) {
+    var s = document.createElement("span");
+    s.className = "ic" + (cls ? " " + cls : "");
+    s.innerHTML = svgOf(name, size || 15, weight);
+    return s;
+  }
+
+  // ---------- toolbar ----------
+  var toolbar = $("toolbar");
+  // groups = semantic blocks; order = importance: selected file → everything at once →
+  // panel data → snapshots. Icons without labels: the label lives in the tooltip and aria-label,
+  // otherwise a row of ten buttons spreads in width and breaks in a narrow panel.
+  var TB = [
+    [
+      { id: "accept", ic: "accept", cls: "accent", t: "Accept changes in the selected file",
+        act: function () { act1("accept"); } },
+      { id: "reject", ic: "reject", cls: "danger", t: "Reject changes in the selected file — restore the previous content",
+        act: function () { act1("reject"); } },
+      { id: "diff", ic: "diff", t: "Show differences for the selected file (before/after)",
+        act: function () { act1("diff"); } },
+      { id: "open", ic: "open", t: "Open the selected file in the editor",
+        act: function () { act1("open"); } }
+    ],
+    [
+      { id: "acceptAll", ic: "acceptAll", cls: "accent", t: "Accept all pending changes",
+        act: function () { toJava({ type: "acceptAll" }); } },
+      { id: "rejectAll", ic: "rejectAll", cls: "danger", t: "Reject all pending changes — restore the previous files",
+        act: function () { toJava({ type: "rejectAll" }); } }
+    ],
+    [
+      { id: "refresh", ic: "refresh", t: "Refresh the list",
+        act: function () { toJava({ type: "refresh" }); } },
+      { id: "clear", ic: "clear", t: "Clear history: remove accepted and rejected entries",
+        act: function () { toJava({ type: "clear" }); } }
+    ],
+    [
+      { id: "snapshot", ic: "snapshot", t: "Create a snapshot — a project restore point",
+        act: function () { toJava({ type: "snapshot" }); } },
+      { id: "rollback", ic: "rollback", t: "Roll the project back to one of the snapshots",
+        act: function () { openCheckpoints(); } }
+    ]
+  ];
+  TB.forEach(function (group) {
+    var box = document.createElement("span");
+    box.className = "tb-group";
+    group.forEach(function (b) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "tb-" + b.id;
+      btn.className = "tbtn " + (b.cls || "");
+      btn.setAttribute("data-tip", b.t);
+      btn.setAttribute("aria-label", b.t);
+      btn.innerHTML = icon(b.ic);
+      btn.onclick = b.act;
+      box.appendChild(btn);
+    });
+    toolbar.appendChild(box);
+  });
+
+  // without a selected file, actions on it are unavailable rather than silently doing nothing
+  var NEEDS_SELECTION = ["accept", "reject", "diff", "open"];
+  function updateToolbarState() {
+    var hasSelection = !!selectedPath;
+    NEEDS_SELECTION.forEach(function (id) {
+      var b = $("tb-" + id);
+      if (b) b.disabled = !hasSelection;
+    });
+    var clear = $("tb-clear");
+    if (clear) {
+      clear.disabled = !allEntries.some(function (e) { return e && e.status !== "PENDING"; });
+    }
+    var rollback = $("tb-rollback");
+    if (rollback) rollback.disabled = checkpoints.length === 0;
+  }
+
+  function act1(type) {
+    if (!selectedPath) return;
+    toJava({ type: type, path: selectedPath });
+  }
+
+  // ---------- tree by folders ----------
+  function displayOf(e) {
+    var d = (e && (e.display || e.path)) || "?";
+    return String(d).replace(/\\\\/g, "/");
+  }
+
+  function buildTree(list) {
+    var root = { dirs: {}, files: [] };
+    list.forEach(function (e) {
+      if (!e || !(e.display || e.path)) return;   // a guard against incomplete data
+      var parts = displayOf(e).split("/");
+      var node = root;
+      for (var i = 0; i < parts.length - 1; i++) {
+        var d = parts[i];
+        if (!node.dirs[d]) node.dirs[d] = { dirs: {}, files: [] };
+        node = node.dirs[d];
+      }
+      node.files.push({ name: parts[parts.length - 1], entry: e });
+    });
+    return root;
+  }
+
+  function render() {
+    var tree = $("tree");
+    updateToolbarState();
+    tree.innerHTML = "";
+    try {
+      renderInner(tree);
+    } catch (err) {
+      // one broken entry must not leave the panel empty
+      console.error("changes render failed", err);
+      tree.innerHTML = "";
+      var d = document.createElement("div");
+      d.className = "empty";
+      d.textContent = "Could not render the change list: " + (err && err.message ? err.message : err) +
+        "\nPress \"Refresh\" or reopen the tab.";
+      tree.appendChild(d);
+    }
+  }
+
+  function renderInner(tree) {
+    if (entries.length === 0) {
+      var d = document.createElement("div");
+      d.className = "empty";
+      d.textContent = "No changes yet.\nEdits made by the DSH agent will appear here.";
+      tree.appendChild(d);
+      return;
+    }
+    if (grouped) {
+      var root = buildTree(entries);
+      renderNode(tree, root, 0, "");
+    } else {
+      entries.slice().sort(function (a, b) { return displayOf(a).localeCompare(displayOf(b)); }).forEach(function (e) {
+        renderFile(tree, { name: displayOf(e), entry: e }, 0);
+      });
+    }
+  }
+
+  function renderNode(container, node, depth, prefix) {
+    var dirNames = Object.keys(node.dirs).sort();
+    dirNames.forEach(function (dir) {
+      renderFolder(container, dir, node.dirs[dir], depth, prefix ? prefix + "/" + dir : dir);
+    });
+    node.files.sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (f) {
+      renderFile(container, f, depth);
+    });
+  }
+
+  function renderFolder(container, name, node, depth, path) {
+    var open = !collapsedDirs[path];
+    var row = document.createElement("div");
+    row.className = "frow" + (open ? " open" : "");
+    row.style.paddingLeft = (10 + depth * 14) + "px";
+    row.setAttribute("role", "button");
+    row.setAttribute("aria-expanded", open ? "true" : "false");
+    row.appendChild(iconEl("chev", "chev", 12, 1.4));
+    row.appendChild(iconEl("folder", "folder", 14));
+    var nm = document.createElement("span");
+    nm.className = "fname";
+    nm.textContent = name;
+    row.appendChild(nm);
+    var cnt = document.createElement("span");
+    cnt.className = "fcount";
+    cnt.textContent = countFiles(node);
+    row.appendChild(cnt);
+
+    var children = document.createElement("div");
+    children.className = "children" + (open ? " open" : "");
+    renderNode(children, node, depth + 1, path);
+
+    row.onclick = function () {
+      var isOpen = children.classList.toggle("open");
+      row.classList.toggle("open", isOpen);
+      row.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      if (isOpen) delete collapsedDirs[path]; else collapsedDirs[path] = true;
+    };
+    container.appendChild(row);
+    container.appendChild(children);
+  }
+
+  function countFiles(node) {
+    var n = node.files.length;
+    Object.keys(node.dirs).forEach(function (d) { n += countFiles(node.dirs[d]); });
+    return n;
+  }
+
+  function renderFile(container, f, depth) {
+    var e = f.entry;
+    var row = document.createElement("div");
+    row.className = "filerow" + (e.path === selectedPath ? " selected" : "");
+    row.style.paddingLeft = (10 + depth * 14) + "px";
+
+    var kind = e.kind === "CREATED" ? "created" : (e.kind === "DELETED" ? "deleted" : "modified");
+    row.appendChild(iconEl(kind, kind, 14));
+
+    var nm = document.createElement("span");
+    nm.className = "fname";
+    nm.textContent = f.name || displayOf(e);
+    row.appendChild(nm);
+
+    var stats = document.createElement("span");
+    stats.className = "stats";
+    var s = [];
+    if (e.kind === "CREATED") s.push("new");
+    if (e.kind === "DELETED") s.push("deleted");
+    if (e.added >= 0 && e.deleted >= 0) s.push("+" + e.added + " −" + e.deleted);
+    stats.textContent = s.join(" · ");
+    row.appendChild(stats);
+
+    if (e.status === "ACCEPTED" || e.status === "REJECTED") {
+      var tag = document.createElement("span");
+      tag.className = "tag " + (e.status === "ACCEPTED" ? "acc" : "rej");
+      tag.textContent = e.status === "ACCEPTED" ? "accepted" : "rejected";
+      row.appendChild(tag);
+    }
+    if (e.revertUnavailable) {
+      var w = document.createElement("span");
+      w.className = "tag unav";
+      w.setAttribute("data-tip", "No \"before\" snapshot and no git version — rollback is not possible");
+      w.appendChild(iconEl("warn", "warn", 12, 1.4));
+      row.appendChild(w);
+    }
+
+    row.onclick = function () {
+      selectedPath = e.path;
+      render();
+      toJava({ type: "diff", path: e.path });
+    };
+    row.ondblclick = function () { toJava({ type: "open", path: e.path }); };
+    row.setAttribute("data-tip", e.path);
+    container.appendChild(row);
+
+    // file version history (git-like)
+    var versions = (e.versions && e.versions.items) || [];
+    if (versions.length > 0) {
+      var vwrap = document.createElement("div");
+      vwrap.className = "vhist";
+      vwrap.style.paddingLeft = (10 + depth * 14 + 18) + "px";
+      var vtoggle = document.createElement("button");
+      vtoggle.type = "button";
+      vtoggle.className = "vhtoggle";
+      vtoggle.innerHTML = icon("history", "", 14) + "<span>History · " + versions.length + "</span>";
+      vtoggle.onclick = function (ev) {
+        ev.stopPropagation();
+        vlist.classList.toggle("open");
+      };
+      vwrap.appendChild(vtoggle);
+      var vlist = document.createElement("div");
+      vlist.className = "vlist";
+      versions.slice().reverse().forEach(function (v) {
+        var vr = document.createElement("div");
+        vr.className = "vrow";
+        vr.innerHTML = "<span style='color:var(--muted);font-size:10.5px'>" + esc(v.time) + "</span>" +
+          "<span style='color:var(--muted);font-size:11px'>+" + v.added + " −" + v.deleted + "</span>";
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = "Diff";
+        b.setAttribute("data-tip", "Compare the current file with this version");
+        b.onclick = function (ev) {
+          ev.stopPropagation();
+          toJava({ type: "versionDiff", path: e.path, id: v.id });
+        };
+        vr.appendChild(b);
+        vlist.appendChild(vr);
+      });
+      vwrap.appendChild(vlist);
+      container.appendChild(vwrap);
+    }
+  }
+
+  // ---------- checkpoints ----------
+  var checkpoints = [];
+  function openCheckpoints() {
+    var menu = $("cpMenu");
+    menu.innerHTML = "";
+    if (checkpoints.length === 0) {
+      var b = document.createElement("button");
+      b.textContent = "No checkpoints yet";
+      b.style.color = "var(--muted)";
+      menu.appendChild(b);
+    }
+    checkpoints.slice().reverse().forEach(function (cp, i) {
+      var b = document.createElement("button");
+      b.innerHTML = icon("rollback") + "<span>" + cp.time + " · " + cp.name + "</span>";
+      b.onclick = function () {
+        menu.classList.remove("open");
+        toJava({ type: "rollback", index: checkpoints.length - 1 - i });
+      };
+      menu.appendChild(b);
+    });
+    menu.classList.add("open");
+    var btn = $("tb-rollback");
+    var r = btn.getBoundingClientRect();
+    menu.style.left = r.left + "px";
+    var mh = menu.scrollHeight;
+    if (r.bottom + mh + 8 > window.innerHeight) {
+      menu.style.bottom = (window.innerHeight - r.top + 4) + "px";
+      menu.style.top = "auto";
+    } else {
+      menu.style.top = (r.bottom + 4) + "px";
+      menu.style.bottom = "auto";
+    }
+  }
+  document.addEventListener("click", function () { $("cpMenu").classList.remove("open"); });
+
+  // ---------- dispatch from Java ----------
+  window.dsh = {
+    dispatch: function (op) {
+      switch (op.op) {
+        case "entries":
+          allEntries = op.entries || [];
+          applyFilter();
+          break;
+        case "counts":
+          $("counts").textContent = "pending " + op.pending + " · accepted " + op.accepted + " · rejected " + op.rejected;
+          break;
+        case "checkpoints":
+          checkpoints = op.items || [];
+          updateToolbarState();
+          break;
+        default: break;
+      }
+    }
+  };
+
+  // search/filter
+  function applyFilter() {
+    var filter = $("search").value.trim().toLowerCase();
+    entries = allEntries.filter(function (e) {
+      if (!e || !(e.path || e.display)) return false;   // an entry without a file — do not show it
+      if (statusFilter === "PENDING" && e.status !== "PENDING") return false;
+      if (statusFilter === "ACCEPTED" && e.status !== "ACCEPTED") return false;
+      if (statusFilter === "REJECTED" && e.status !== "REJECTED") return false;
+      if (filter && (e.display + " " + e.path).toLowerCase().indexOf(filter) < 0) return false;
+      return true;
+    });
+    render();
+  }
+  $("search").addEventListener("input", applyFilter);
+
+  var FILTER_BUTTONS = { ALL: "fAll", PENDING: "fPending", ACCEPTED: "fAccepted", REJECTED: "fRejected" };
+
+  function setFilter(name) {
+    statusFilter = name;
+    Object.keys(FILTER_BUTTONS).forEach(function (key) {
+      var btn = $(FILTER_BUTTONS[key]);
+      var on = key === name;
+      btn.classList.toggle("on", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    applyFilter();
+  }
+  $("fAll").onclick = function () { setFilter("ALL"); };
+  $("fPending").onclick = function () { setFilter("PENDING"); };
+  $("fAccepted").onclick = function () { setFilter("ACCEPTED"); };
+  $("fRejected").onclick = function () { setFilter("REJECTED"); };
+
+  // The button shows the current mode (highlighted), the tooltip — what a click will do.
+  function updateGroupToggle() {
+    var btn = $("groupToggle");
+    btn.innerHTML = (grouped ? icon("folder") : icon("list")) +
+      "<span>" + (grouped ? "By folder" : "Flat list") + "</span>";
+    btn.classList.toggle("on", grouped);
+    btn.setAttribute("aria-pressed", grouped ? "true" : "false");
+    btn.setAttribute("data-tip", grouped
+      ? "Files are grouped by folder — click to show a flat list"
+      : "Files are shown as a flat list — click to group them by folder");
+  }
+  $("groupToggle").onclick = function () {
+    grouped = !grouped;
+    updateGroupToggle();
+    render();
+  };
+  updateGroupToggle();
+  setFilter("ALL");
+
+  // ---------- ready ----------
+  var readyTries = 0;
+  function sendReady() {
+    var fn = INIT.queryFunc && window[INIT.queryFunc];
+    if (typeof fn === "function") { toJava({ type: "ready" }); return; }
+    if (readyTries++ < 50) setTimeout(sendReady, 200);
+  }
+  sendReady();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<idea-plugin>
+    <id>com.dsh.assistant</id>
+    <name>DSH Assistant</name>
+    <vendor>DSH</vendor>
+
+    <!-- Plugin icon (Settings → Plugins, Marketplace) -->
+    <icon path="/icons/dsh.svg"/>
+
+    <description><![CDATA[
+        <h2>DeepSeek Harness (DSH) inside PyCharm</h2>
+        <p>Embeds the DeepSeek Harness web application directly in PyCharm — a Cursor-style
+        assistant built on your own DSH.</p>
+        <ul>
+            <li><b>Chat with DSH in the context of the open project.</b> DSH keeps working as usual
+                (<code>dsh web</code>): the same beautiful chat UI, models and settings.</li>
+            <li><b>Multiple independent sessions.</b> Plugin tabs are separate DSH windows, and inside
+                DSH every session in the session list has its own isolated context.</li>
+            <li><b>Cursor-style TAB completion.</b> Gray inline suggestions from DSH appear right in the
+                editor: <b>Tab</b> accepts, <b>Esc</b> dismisses and schedules a retry in 3 seconds using
+                the whole file. The optional <b>"Extended TAB help"</b> mode allows large continuations
+                (up to 12,000 tokens). A dedicated tool-less DSH completion process answers in ~1–2 s.</li>
+            <li><b>"Changes" panel.</b> The plugin watches project files, shows a diff for each changed
+                file and lets you accept or reject changes one by one or all at once
+                (reject restores the file to its pre-change state).</li>
+            <li><b>Settings synchronized through DSH.</b> Plugin settings live in
+                <code>.dsh/pycharm-assistant.json</code> at the project root: the plugin applies them live,
+                and the DSH agent can read and edit them right in the chat. A managed block is added to
+                <code>AGENTS.md</code> so the agent knows about the settings file.</li>
+            <li><b>Ready to work out of the box.</b> The SDK process starts automatically when the
+                plugin panel opens (this can be turned off in the settings) and can be restarted at
+                any time from the panel menu.</li>
+        </ul>
+        <p>Requirements: PyCharm 2024.3+ (JCEF is bundled) and the DSH CLI
+        (<code>npm install -g @deepseek-ai/dsh</code>) available in PATH — or set a custom
+        command in Settings → Tools → DSH Assistant.</p>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <postStartupActivity implementation="com.dsh.assistant.startup.DshProjectStartup"/>
+
+        <toolWindow id="DSH Assistant"
+                    anchor="right"
+                    icon="/icons/dsh.svg"
+                    factoryClass="com.dsh.assistant.toolwindow.DshToolWindowFactory"
+                    secondary="false"/>
+
+        <applicationService serviceImplementation="com.dsh.assistant.settings.DshAppSettings"/>
+
+        <projectService serviceImplementation="com.dsh.assistant.settings.DshProjectSettings"/>
+        <projectService serviceImplementation="com.dsh.assistant.changes.ChangeTracker"/>
+        <projectService serviceImplementation="com.dsh.assistant.changes.BaselineStore"/>
+        <projectService serviceImplementation="com.dsh.assistant.completion.DshInlineCompletionService"/>
+
+        <!-- Cursor-like TAB: gray DSH suggestions in the editor, Tab accepts, Esc retries -->
+        <inline.completion.provider
+            implementation="com.dsh.assistant.completion.DshInlineCompletionProvider"
+            order="first"/>
+
+        <applicationConfigurable parentId="tools"
+                                 instance="com.dsh.assistant.settings.DshApplicationConfigurable"
+                                 id="com.dsh.assistant.application"
+                                 displayName="DSH Assistant"/>
+
+        <projectConfigurable parentId="tools"
+                             instance="com.dsh.assistant.settings.DshProjectConfigurable"
+                             id="com.dsh.assistant.project"
+                             displayName="DSH Assistant"/>
+    </extensions>
+
+    <actions>
+        <action id="DshAssistant.AskSelection"
+                class="com.dsh.assistant.actions.AskDshAction"
+                text="Ask DSH About Selection"
+                description="Ask DSH about the selected code or the open file">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift K"/>
+        </action>
+        <action id="DshAssistant.EditSelection"
+                class="com.dsh.assistant.actions.EditWithDshAction"
+                text="Edit Selection with DSH"
+                description="Edit the selected code following an instruction (Cursor Ctrl+K)">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift Y"/>
+        </action>
+        <action id="DshAssistant.TabCompletion"
+                class="com.dsh.assistant.actions.TabCompletionAction"
+                text="DSH: Suggest Continuation (TAB)"
+                description="Request a DSH inline suggestion at the caret (Tab to accept)">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

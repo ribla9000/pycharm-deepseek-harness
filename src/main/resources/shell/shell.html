@@ -1,0 +1,2134 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --bg: #1e1f22; --bg2: #26272b; --text: #e8eaed; --muted: #8f949c;
+  --border: #3a3d42; --accent: #4b8bf5; --accent-text: #ffffff;
+  --user-bubble: #2f5ea8; --user-text: #eef3fc; --reasoning: #9aa0a8;
+  --error: #ff6b5e; --warn-bg: #3a3324; --warn-border: #6b5a2e;
+  --code-bg: #2b2d30; --hover: #2b2d30; --menu-bg: #26272b;
+  --shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  background: var(--bg); color: var(--text);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+svg { vertical-align: -2px; flex: 0 0 auto; }
+button { font-family: inherit; }
+
+/* ---------- tab bar ---------- */
+#tabbar {
+  display: flex; align-items: center; gap: 4px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  overflow-x: auto; overflow-y: hidden; flex: 0 0 auto;
+  padding: 3px 6px;
+}
+.tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px; border-radius: 8px; cursor: pointer;
+  color: var(--muted); font-size: 12px; white-space: nowrap;
+  border: 1px solid transparent; flex: 0 0 auto; user-select: none;
+  background: none;
+}
+.tab:hover { background: var(--hover); color: var(--text); }
+.tab.active { background: var(--bg2); color: var(--text); border-color: var(--border); }
+.tab .x { color: var(--muted); border: none; background: none; padding: 0 2px; font-size: 13px; cursor: pointer; border-radius: 4px; }
+.tab .x:hover { color: var(--error); }
+.bar-btn {
+  border: none; background: none; color: var(--muted); cursor: pointer;
+  padding: 3px 7px; border-radius: 7px; font-size: 14px; flex: 0 0 auto;
+  display: inline-flex; align-items: center;
+}
+.bar-btn:hover { background: var(--hover); color: var(--text); }
+
+/* ---------- header ---------- */
+header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-bottom: 1px solid var(--border);
+  flex: 0 0 auto; min-height: 34px;
+}
+#title { font-weight: 600; font-size: 12.5px; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#metricsBtn {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--muted);
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 2px 9px; cursor: pointer; white-space: nowrap;
+  flex: 0 0 auto; max-width: 55%; overflow: hidden; text-overflow: ellipsis;
+}
+#metricsBtn:hover { background: var(--hover); color: var(--text); }
+#metricsBtn span { overflow: hidden; text-overflow: ellipsis; }
+.hbtn {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; color: var(--muted);
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 2px 7px; cursor: pointer; flex: 0 0 auto;
+}
+.hbtn:hover { background: var(--hover); color: var(--text); }
+/* status: the width is reserved so text changes do not shift the header */
+#status { font-size: 11px; color: var(--muted); white-space: nowrap; display: flex; align-items: center; gap: 5px; flex: 0 0 auto; min-width: 150px; justify-content: flex-end; }
+#statusText { overflow: hidden; text-overflow: ellipsis; }
+#status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: inline-block; flex: 0 0 auto; }
+#status.ready .dot, #status.working .dot, #status.running .dot { background: #2e8b57; }
+#status.ready, #status.working, #status.running { color: #7fbf9a; }
+#status.starting .dot { background: #d9a53b; }
+#status.starting { color: #d9a53b; }
+#status.failed .dot { background: var(--error); }
+#status.failed { color: var(--error); }
+#status.down .dot { background: var(--muted); }
+@keyframes pulse { 50% { opacity: .35; } }
+
+/* info panels */
+.infopanel {
+  position: absolute; right: 10px; top: 78px; z-index: 70;
+  width: min(560px, calc(100% - 24px));
+  border: 1px solid var(--border); border-radius: 10px; background: var(--bg2);
+  padding: 10px 14px; max-height: 60vh; overflow-y: auto;
+  box-shadow: var(--shadow);
+}
+.infopanel.hidden { display: none; }
+.infopanel table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.infopanel th, .infopanel td { text-align: left; padding: 3px 8px; border-bottom: 1px solid var(--border); }
+.infopanel th { color: var(--muted); font-weight: 500; white-space: nowrap; }
+.infopanel h3 { margin: 8px 0 4px; font-size: 13px; }
+
+/* ---------- chat views ---------- */
+#views { flex: 1 1 auto; position: relative; min-height: 0; }
+#emptyState { position: absolute; inset: 0; }
+#emptyState.hidden { display: none; }
+.chatview { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.chatview.hidden { display: none; }
+
+.messages, .infopanel, .dd-menu, #tabbar, pre { overscroll-behavior: contain; }
+.messages, .infopanel, .dd-menu, #tabbar, pre {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 145, 152, .55) transparent;
+}
+.messages {
+  contain: layout style paint;
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 12px 6px;
+  display: flex; flex-direction: column; gap: 8px;
+  overflow-anchor: none;      /* the browser's scroll anchoring caused jumps */
+  overscroll-behavior: contain;
+  scroll-behavior: auto;
+}
+
+.row { display: flex; }
+.row.user { justify-content: flex-end; }
+.bubble { max-width: 86%; padding: 7px 11px; border-radius: 14px; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
+.row.user .bubble { background: var(--user-bubble); color: var(--user-text); border-bottom-right-radius: 4px; }
+.row.assistant .bubble { background: transparent; color: var(--text); padding-left: 2px; }
+.note { color: var(--muted); font-size: 11.5px; align-self: center; text-align: center; max-width: 90%; white-space: pre-wrap; }
+.error-note { color: var(--error); font-size: 12px; max-width: 90%; white-space: pre-wrap; display: flex; gap: 6px; align-items: flex-start; }
+/* error card: a click expands the traceback that can be copied */
+.ecard { border: 1px solid var(--warn-border); border-radius: 10px; background: var(--bg2); max-width: 92%; align-self: flex-start; overflow: hidden; }
+.ecard .ehead {
+  display: flex; gap: 6px; align-items: flex-start; width: 100%; text-align: left;
+  background: none; border: none; color: var(--error); font: inherit; font-size: 12px;
+  padding: 6px 10px; cursor: pointer; white-space: pre-wrap; word-break: break-word;
+}
+.ecard .ehead:hover { background: var(--hover); }
+.ecard .ehead .echev { margin-left: auto; color: var(--muted); flex: 0 0 auto; }
+.ecard .ebody { display: none; border-top: 1px solid var(--border); padding: 6px 10px; }
+.ecard.open .ebody { display: block; }
+.ecard .eactions { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.ecard .ecopy {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 7px;
+  color: var(--text); font: inherit; font-size: 11.5px; padding: 2px 9px; cursor: pointer;
+}
+.ecard .ecopy:hover { background: var(--hover); }
+.ecard .ehint { color: var(--muted); font-size: 11px; }
+.ecard pre {
+  background: var(--code-bg); border-radius: 8px; padding: 7px 9px; margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px;
+  white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow-y: auto;
+  user-select: text; -webkit-user-select: text; cursor: text;
+}
+.tool { color: var(--muted); font-size: 11.5px; padding-left: 2px; max-width: 90%; white-space: pre-wrap; word-break: break-word; display: flex; gap: 6px; align-items: flex-start; }
+.toolcard {
+  border: 1px solid var(--border); border-radius: 10px; background: var(--bg2);
+  max-width: 92%; align-self: flex-start;
+}
+.toolcard .tchead {
+  display: flex; gap: 6px; align-items: center; padding: 5px 10px;
+  cursor: pointer; user-select: none;
+}
+.toolcard .tchead:hover { background: var(--hover); border-radius: 10px; }
+.toolcard .tcbody { display: none; border-top: 1px solid var(--border); padding: 6px 10px; font-size: 12px; }
+.toolcard.open .tcbody { display: block; }
+.toolcard .tcstatus { margin-left: auto; font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+.toolcard .tcstatus.done { color: #4caf7d; }
+.toolcard .tcstatus.err { color: var(--error); }
+.toolcard pre {
+  background: var(--code-bg); border-radius: 8px; padding: 6px 8px; margin: 2px 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px;
+  white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow-y: auto;
+}
+.reasoning { border-left: 2px solid var(--border); padding-left: 10px; margin: 2px 0; max-width: 92%; }
+.reasoning .rhead { background: none; border: none; color: var(--reasoning); font-size: 11.5px; cursor: pointer; padding: 2px 0; font-family: inherit; display: flex; align-items: center; gap: 5px; }
+.reasoning .rbody { color: var(--reasoning); font-size: 12px; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; display: none; }
+.reasoning.open .rbody { display: block; }
+.qcard { border: 1px solid var(--warn-border); background: var(--warn-bg); border-radius: 10px; padding: 8px 10px; max-width: 92%; }
+.qcard .qhead { font-weight: 600; font-size: 12.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+.qcard .q { margin: 5px 0 3px; }
+.qcard .opts { display: flex; flex-wrap: wrap; gap: 5px; }
+.qcard button { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; cursor: pointer; color: var(--text); font: inherit; font-size: 12px; }
+.qcard button:hover { background: var(--hover); }
+.qcard button.selected { border-color: var(--accent); color: var(--accent); background: var(--bg2); }
+.qcard button:disabled { opacity: .5; cursor: default; }
+.qcard .qstatus { font-size: 11px; color: var(--muted); margin-top: 5px; }
+.typing-caret::after { content: "▍"; color: var(--accent); animation: caret-blink 1.1s steps(1, end) infinite; }
+@keyframes caret-blink { 0%, 60% { opacity: 1; } 61%, 100% { opacity: 0; } }
+
+.chipsrow { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 12px 4px; align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: 5px; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 2px 8px; font-size: 11.5px; color: var(--text); }
+.chip .x { cursor: pointer; color: var(--muted); border: none; background: none; font-size: 12px; padding: 0; display: flex; }
+.chip .x:hover { color: var(--error); }
+.resetbtn { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 11.5px; padding: 2px 4px; display: inline-flex; align-items: center; gap: 4px; }
+.resetbtn:hover { color: var(--error); }
+.imgrows { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 0 6px 4px; }
+.imgrow { display: inline-flex; align-items: center; gap: 6px; padding: 0 6px 4px; }
+.imgrow img { max-height: 56px; border-radius: 8px; border: 1px solid var(--border); }
+.imgrow .x { cursor: pointer; color: var(--muted); background: none; border: none; display: flex; }
+.imgrow .x:hover { color: var(--error); }
+
+footer { flex: 0 0 auto; border-top: 1px solid var(--border); padding: 6px 12px 8px; background: var(--bg); }
+#input, .input { width: 100%; min-height: 44px; max-height: 160px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg2); color: var(--text); padding: 9px 11px; font: inherit; resize: none; outline: none; }
+#input:focus, .input:focus { border-color: var(--accent); }
+.controls { display: flex; align-items: flex-end; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+/* composer item = caption above + the control itself; the caption says what it is and why */
+.ctl { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.ctl .cap {
+  font-size: 10px; line-height: 1.25; padding: 0 2px;
+  color: var(--muted); white-space: nowrap; user-select: none;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+}
+.ctl .actions { display: flex; align-items: center; gap: 6px; }
+
+.dd { position: relative; }
+.dd-btn { display: inline-flex; align-items: center; gap: 5px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 4px 9px; font: inherit; font-size: 12px; cursor: pointer; }
+.dd-btn:hover { background: var(--hover); }
+.dd-btn .dd-label { display: inline-flex; align-items: center; gap: 5px; }
+.dd-menu { position: fixed; z-index: 60; background: var(--menu-bg); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); padding: 4px; min-width: 150px; display: none; max-height: 260px; overflow-y: auto; }
+.dd-menu.open { display: block; }
+.dd-menu button { display: flex; width: 100%; text-align: left; border: none; background: none; color: var(--text); padding: 6px 10px; border-radius: 6px; cursor: pointer; font: inherit; font-size: 12.5px; align-items: center; gap: 6px; }
+.dd-menu button:hover { background: var(--hover); }
+.dd-menu button.selected { color: var(--accent); }
+.dd-menu .dd-head { padding: 5px 10px; font-size: 11px; color: var(--muted); font-weight: 600; }
+/* Deletion right in the history row: not hidden behind a right click */
+.dd-menu button .hist-del { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; flex: 0 0 auto; border-radius: 6px; color: var(--muted); }
+.dd-menu button .hist-del:hover { color: #e05a4e; background: rgba(224, 90, 78, .14); }
+
+#send, .sendbtn { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: var(--accent-text); border: none; border-radius: 8px; padding: 5px 14px; font: inherit; font-size: 12px; cursor: pointer; }
+#send.stop, .sendbtn.stop { background: #c3402f; }
+.stopbtn { display: none; align-items: center; gap: 6px; background: #c3402f; color: #fff; border: none; border-radius: 8px; padding: 5px 12px; font: inherit; font-size: 12px; cursor: pointer; }
+.stopbtn:hover { background: #a8341f; }
+/* a message waiting for the current turn to finish */
+.row.user .bubble.queued { background: var(--bg2); color: var(--muted); border: 1px dashed var(--border); }
+.qbadge { display: flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 10.5px; color: var(--muted); }
+.qbadge .qcancel { border: none; background: none; color: var(--muted); cursor: pointer; display: inline-flex; padding: 0; }
+.qbadge .qcancel:hover { color: var(--error); }
+#attach, .attachbtn { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 4px 10px; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; min-height: 28px; }
+
+.bubble pre, .reasoning .rbody pre { background: var(--code-bg); border-radius: 8px; padding: 8px 10px; overflow-x: auto; margin: 5px 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+.bubble code, .reasoning .rbody code { background: var(--code-bg); border-radius: 4px; padding: 1px 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+.bubble pre code { background: none; padding: 0; }
+.bubble a { color: var(--accent); }
+.bubble h1,.bubble h2,.bubble h3,.bubble h4 { font-size: 1.05em; margin: 6px 0 3px; }
+
+/* ---------- markdown tables ---------- */
+.mdtable { overflow-x: auto; margin: 7px 0; max-width: 100%; border-radius: 8px; }
+.mdtable table { border-collapse: collapse; font-size: 12px; white-space: normal; }
+.mdtable th, .mdtable td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; vertical-align: top; white-space: normal; overflow-wrap: anywhere; }
+.mdtable th { background: var(--bg2); font-weight: 600; }
+.mdtable tbody tr:nth-child(even) { background: rgba(255,255,255,.035); }
+.mdtable code { font-size: 11.5px; }
+
+/* ---------- code blocks: header with language and copy button + highlighting ---------- */
+.codeblock { margin: 7px 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--code-ide-bg, var(--code-bg)); max-width: 100%; }
+.codeblock .cbhead { display: flex; align-items: center; gap: 8px; padding: 2px 6px 2px 9px; background: rgba(0,0,0,.22); border-bottom: 1px solid var(--border); }
+.codeblock .cblang { font-size: 10.5px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.codeblock .cbcopy { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; background: none; border: none; color: var(--muted); font: inherit; font-size: 11px; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.codeblock .cbcopy:hover { color: var(--text); background: var(--hover); }
+.codeblock .cbcopy.copied { color: #4caf7d; }
+.codeblock pre { margin: 0; border: 0; border-radius: 0; background: transparent; padding: 8px 10px; max-height: 420px; overflow: auto; }
+.codeblock pre code { color: var(--code-ide-fg, var(--text)); }
+pre .tok-kw { color: var(--code-kw, #cf8e6d); }
+pre .tok-str { color: var(--code-str, #6aab73); }
+pre .tok-num { color: var(--code-num, #2aacb8); }
+pre .tok-com { color: var(--code-com, #7a7e85); }
+pre .tok-fn { color: var(--code-fn, #56a8f5); }
+pre .tok-dec { color: var(--code-dec, #b3ae60); }
+pre .tok-const { color: var(--code-const, #c77dbb); }
+html.com-italic pre .tok-com { font-style: italic; }
+.bubble ul { margin: 4px 0; padding-left: 18px; }
+body.dragging .messages:not(.hidden) { outline: 2px dashed var(--accent); outline-offset: -4px; }
+body.dragging::after { content: "Drop files or images into the chat"; position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(30,31,34,.7); color: var(--text); font-size: 14px; pointer-events: none; z-index: 90; }
+</style>
+</head>
+<body>
+<div id="tabbar"></div>
+<header>
+  <div id="title">DSH Assistant</div>
+  <button id="metricsBtn" data-tip="Active chat metrics: tokens, cache, speed, context resets"></button>
+  <button id="toolsBtn" class="hbtn" data-tip="Agent tools and skills"></button>
+  <button id="fontDec" class="hbtn" data-tip="Decrease text size">A−</button>
+  <button id="fontInc" class="hbtn" data-tip="Increase text size">A+</button>
+  <div id="status" data-tip="Agent status: working/ready"><span class="dot"></span><span id="statusText"></span></div>
+</header>
+<div id="metricsPanel" class="infopanel hidden"></div>
+<div id="toolsPanel" class="infopanel hidden"></div>
+<div id="views">
+  <div id="emptyState">
+    <div style="color:var(--muted);font-size:13px;margin-top:40px;text-align:center">No open chats</div>
+    <div style="text-align:center;margin-top:8px"><button id="emptyNewBtn" class="hbtn" style="padding:6px 14px;font-size:12.5px"></button></div>
+  </div>
+</div>
+<div class="dd-menu" id="menuPop"></div>
+<div class="dd-menu" id="historyPop"></div>
+<div class="dd-menu" id="attachMenu"></div>
+<div class="dd-menu" id="tabMenu"></div>
+
+<script>
+(function () {
+  "use strict";
+  var INIT = window.DSH_INIT || {};
+  document.documentElement.dataset.theme = INIT.theme || "dark";
+
+  // The plugin UI is English-only (no language selection).
+  var L10N = {
+    placeholder: "Ask anything about the project… (⏎ — send, Shift+⏎ — newline)",
+    capMode: "Agent mode",
+    capPolicy: "Permissions",
+    capModel: "Model",
+    capEffort: "Effort",
+    capAttach: "Attach file",
+    tipMode: "Mode: Agent — edits files, Ask — analysis only, Plan — plan first",
+    tipPolicy: "Session policy: ask for confirmation before important actions",
+    tipModel: "DSH model answering in this chat",
+    tipEffort: "Reasoning effort — how much the model thinks before answering",
+    tipAttach: "Attach an image or file (Ctrl+V / drag&drop)",
+    tipStop: "Stop the agent (the current turn is interrupted, the queue continues)",
+    tipSend: "Send request (⏎)",
+    tipSendQueue: "Agent is running — the message will be queued and sent after the current turn",
+    policyNever: "Full access",
+    policyAsk: "Ask",
+    effortAuto: "auto",
+    attachImage: "Image…",
+    attachFile: "File (to context)…",
+    send: "Send",
+    queue: "Queue",
+    stop: "Stop"
+  };
+
+  /** Code highlighting colors from the PyCharm editor scheme (supplied by ChatShell). */
+  function applyCodeColors(c) {
+    if (!c) return;
+    var root = document.documentElement;
+    var map = {
+      kw: "--code-kw", str: "--code-str", num: "--code-num", com: "--code-com",
+      fn: "--code-fn", dec: "--code-dec", const: "--code-const",
+      text: "--code-ide-fg", bg: "--code-ide-bg"
+    };
+    for (var k in map) {
+      if (c[k]) root.style.setProperty(map[k], c[k]);
+    }
+    root.classList.toggle("com-italic", c.comItalic !== false);
+  }
+  applyCodeColors(INIT.codeColors);
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ---------- bridge ----------
+  function toJava(obj) {
+    var fn = INIT.queryFunc && window[INIT.queryFunc];
+    if (typeof fn === "function") {
+      fn({ request: JSON.stringify(obj), onSuccess: function () {}, onFailure: function (c, m) { console.error(c, m); } });
+    }
+  }
+
+  // ---------- floating layers: tooltips and menus ----------
+  // body { zoom } (the A+/A− text scale) multiplies CSS coordinates inside the layer, while
+  // getBoundingClientRect() already returns scaled (screen) values. So we
+  // calibrate the factor once and convert screen coordinates into layer coordinates —
+  // otherwise popups drift past the bottom/right window edge when the scale is not 100%.
+  var layerProbe = document.createElement("div");
+  layerProbe.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none";
+  document.body.appendChild(layerProbe);
+  var layerMap = { kx: 1, ky: 1, ox: 0, oy: 0 };
+
+  function calibrateLayer() {
+    layerProbe.style.left = "0px"; layerProbe.style.top = "0px";
+    var a = layerProbe.getBoundingClientRect();
+    layerProbe.style.left = "100px"; layerProbe.style.top = "100px";
+    var b = layerProbe.getBoundingClientRect();
+    var kx = (b.left - a.left) / 100, ky = (b.top - a.top) / 100;
+    layerMap = {
+      kx: (isFinite(kx) && kx > 0.01) ? kx : 1,
+      ky: (isFinite(ky) && ky > 0.01) ? ky : 1,
+      ox: a.left, oy: a.top
+    };
+  }
+  calibrateLayer();
+
+  var EDGE = 6, POPUP_GAP = 5;
+
+  /**
+   * Places a popup next to an anchor. opts.side = "top" — up first (bottom panel),
+   * otherwise down first; if it fits nowhere — clamps it to the window edges and
+   * limits its size so the popup never leaves the screen.
+   * anchor — {left, top, bottom} in screen pixels; all arithmetic is in the layer's
+   * CSS pixels (so popup coordinates are divided by the scale), else A+/A− popups drift.
+   */
+  function placePopup(el, anchor, opts) {
+    opts = opts || {};
+    var kx = layerMap.kx, ky = layerMap.ky;
+    var vwCss = window.innerWidth / kx, vhCss = window.innerHeight / ky;
+    var edgeX = EDGE / kx, edgeY = EDGE / ky;
+    var gap = (opts.gap === undefined ? POPUP_GAP : opts.gap) / ky;
+    var maxWCss = Math.max(60, vwCss - 2 * edgeX);
+    var maxHCss = Math.max(40, vhCss - 2 * edgeY);
+
+    // take the base limits from CSS (.dd-menu max-height, tooltip max-width);
+    // remember them once so shrinking to a narrow window does not stick
+    var cs = window.getComputedStyle(el);
+    if (el.dataset.baseMaxW === undefined) {
+      var bw = parseFloat(cs.maxWidth);
+      el.dataset.baseMaxW = String((isFinite(bw) && bw > 0) ? bw : 10000);
+      var bh = parseFloat(cs.maxHeight);
+      el.dataset.baseMaxH = String((isFinite(bh) && bh > 0) ? bh : 10000);
+      var bmin = parseFloat(cs.minWidth);
+      el.dataset.baseMinW = String((isFinite(bmin) && bmin > 0) ? bmin : 0);
+    }
+    var baseW = parseFloat(el.dataset.baseMaxW);
+    var baseH = parseFloat(el.dataset.baseMaxH);
+    var minW = parseFloat(el.dataset.baseMinW);
+    var mw = Math.min(baseW, maxWCss);
+    var capH = Math.min(baseH, maxHCss);
+    el.style.maxWidth = mw + "px";
+    el.style.maxHeight = capH + "px";
+    el.style.minWidth = Math.min(minW, mw) + "px";
+
+    // "natural" height at the full limit: the side is chosen from it,
+    // not from the height of the previous, tighter, show
+    var r0 = el.getBoundingClientRect();
+    var w = Math.min(r0.width / kx, maxWCss);
+    var natH = Math.min(r0.height / ky, maxHCss);
+    // the anchor is clamped to the window too: if it drifted off the edge (narrow panel, large
+    // scale), the popup must stay visible anyway
+    var aTop = Math.max(edgeY, Math.min((anchor.top - layerMap.oy) / ky, vhCss - edgeY));
+    var aBottom = Math.max(aTop, Math.min((anchor.bottom - layerMap.oy) / ky, vhCss - edgeY));
+    var aLeft = (anchor.left - layerMap.ox) / kx;
+    var below = aBottom + gap;
+    var aboveBottom = aTop - gap;              // bottom edge of a popup opened upwards
+    var spaceBelow = Math.max(0, vhCss - edgeY - below);
+    var spaceAbove = Math.max(0, aboveBottom - edgeY);
+
+    // side: "top" — up first (bottom panel, no room below), "bottom"/"auto" —
+    // down first. If it fits neither way, pick the side with more room
+    var prefer = opts.side || "auto";
+    var above;
+    if (prefer === "top") {
+      if (natH <= spaceAbove) above = true;
+      else if (natH <= spaceBelow) above = false;
+      else above = spaceAbove >= spaceBelow;
+    } else {
+      if (natH <= spaceBelow) above = false;
+      else if (natH <= spaceAbove) above = true;
+      else above = spaceAbove > spaceBelow;
+    }
+
+    // the chosen side may have less room than the natural height — shrink the popup
+    // (the menu becomes scrollable) rather than let it overflow the screen edge
+    var avail = above ? spaceAbove : spaceBelow;
+    el.style.maxHeight = Math.max(24, Math.min(capH, avail)) + "px";
+    var r = el.getBoundingClientRect();
+    var h = Math.min(r.height / ky, maxHCss);
+    var top = above ? (aboveBottom - h) : below;
+    top = Math.max(edgeY, Math.min(top, vhCss - edgeY - h));
+    var left = (opts.right !== undefined ? (opts.right - layerMap.ox) / kx - w : aLeft);
+    left = Math.max(edgeX, Math.min(left, vwCss - edgeX - w));
+    el.style.left = left + "px";
+    el.style.top = top + "px";
+    el.style.right = "auto";
+    el.style.bottom = "auto";
+    return { top: top, left: left, width: w, height: h };
+  }
+
+  // open menus are re-laid out on window resize and scroll
+  var openPopups = [];
+  function trackPopup(el, anchorEl, opts) {
+    untrackPopup(el);
+    openPopups.push({ el: el, anchorEl: anchorEl, opts: opts || null });
+  }
+  function untrackPopup(el) {
+    openPopups = openPopups.filter(function (p) { return p.el !== el; });
+  }
+  function repositionPopups() {
+    var alive = [];
+    openPopups.forEach(function (p) {
+      if (!p.el.classList.contains("open") || !p.anchorEl || !document.body.contains(p.anchorEl)) return;
+      placePopup(p.el, p.anchorEl.getBoundingClientRect(), p.opts || {});
+      alive.push(p);
+    });
+    openPopups = alive;
+  }
+
+  var tipEl = document.createElement("div");
+  tipEl.style.cssText = "position:fixed;z-index:200;pointer-events:none;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11.5px;display:none;max-width:340px;box-shadow:var(--shadow)";
+  document.body.appendChild(tipEl);
+
+  function hideTip() { tipEl.style.display = "none"; }
+  function tipAnchor(e) { return e.target && e.target.closest ? e.target.closest("[data-tip]") : null; }
+  /**
+   * Tooltips near the bottom edge open upwards: there is no room under the composer,
+   * and the text ran off the panel. Check the explicit attribute, then the footer,
+   * then the bottom half of the window (chips, attachments, etc.).
+   */
+  function tipSide(t) {
+    var s = t.getAttribute("data-tip-side");
+    if (s) return s;
+    if (t.closest && t.closest("footer")) return "top";
+    var r = t.getBoundingClientRect();
+    return (r.top > window.innerHeight * 0.55) ? "top" : "auto";
+  }
+
+  document.addEventListener("mouseover", function (e) {
+    var t = tipAnchor(e);
+    if (!t) return;
+    var text = t.getAttribute("data-tip");
+    if (!text) { hideTip(); return; }
+    tipEl.textContent = text;
+    tipEl.style.display = "block";
+    var rect = t.getBoundingClientRect();
+    // on composer items the tooltip sits above the whole bottom panel instead of over
+    // the captions and the input field: that way both the tooltip and the control stay visible
+    var foot = t.closest ? t.closest("footer") : null;
+    if (foot) {
+      var fr = foot.getBoundingClientRect();
+      rect = { left: rect.left, top: fr.top, bottom: fr.top };
+    }
+    placePopup(tipEl, rect, { gap: 6, side: tipSide(t) });
+  });
+  document.addEventListener("mouseout", function (e) {
+    var t = tipAnchor(e);
+    if (!t) return;
+    var to = e.relatedTarget;
+    if (to && (t === to || t.contains(to))) return;   // moving inside the anchor — do not flicker
+    hideTip();
+  });
+  document.addEventListener("mousedown", hideTip);
+
+  // copying code from blocks (buttons are recreated on every markdown render)
+  document.addEventListener("click", function (e) {
+    var btn = e.target && e.target.closest ? e.target.closest(".cbcopy") : null;
+    if (!btn) return;
+    var block = btn.closest(".codeblock");
+    var pre = block ? block.querySelector("pre") : null;
+    if (!pre) return;
+    var label = btn.querySelector(".cblabel");
+    copyText(pre.textContent);
+    btn.classList.add("copied");
+    if (label) label.textContent = "Copied";
+    setTimeout(function () {
+      btn.classList.remove("copied");
+      if (label) label.textContent = "Copy";
+    }, 1500);
+  });
+  window.addEventListener("resize", function () {
+    calibrateLayer();
+    hideTip();
+    repositionPopups();
+  });
+  document.addEventListener("scroll", function (e) {
+    var t = e.target;
+    if (t && t.classList && t.classList.contains("dd-menu")) return; // scrolling the menu itself
+    hideTip();
+    repositionPopups();
+  }, true);
+
+  // ---------- icons ----------
+  var SW = 'width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+  var ICONS = {
+    send: '<svg ' + SW + '><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+    stop: '<svg ' + SW + '><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
+    plus: '<svg ' + SW + '><path d="M12 5v14M5 12h14"/></svg>',
+    image: '<svg ' + SW + '><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
+    file: '<svg ' + SW + '><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>',
+    lock: '<svg ' + SW + '><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+    unlock: '<svg ' + SW + '><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.4-2.2"/></svg>',
+    spark: '<svg ' + SW + '><path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12z"/></svg>',
+    eraser: '<svg ' + SW + '><path d="M20 20H9L3.5 14.5a2 2 0 0 1 0-2.8l8.2-8.2a2 2 0 0 1 2.8 0L20 9"/><path d="M9 20l3.5-7"/></svg>',
+    terminal: '<svg ' + SW + '><path d="M4 17l6-6-6-6M12 19h8"/></svg>',
+    question: '<svg ' + SW + '><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>',
+    x: '<svg ' + SW + '><path d="M18 6L6 18M6 6l12 12"/></svg>',
+    chevron: '<svg ' + SW + '><path d="M6 9l6 6 6-6"/></svg>',
+    copy: '<svg ' + SW + '><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg>',
+    alert: '<svg ' + SW + '><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+    tools: '<svg ' + SW + '><path d="M14.7 6.3a4.5 4.5 0 0 0-6 5.9L3 18l5.8-5.7a4.5 4.5 0 0 0 5.9-6z"/><path d="M14.7 6.3L18 3l3 3-3.3 3.3"/></svg>',
+    history: '<svg ' + SW + '><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>',
+    menu: '<svg ' + SW + '><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>',
+    web: '<svg ' + SW + '><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+    restart: '<svg ' + SW + '><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>',
+    settings: '<svg ' + SW + '><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h.1a1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+    layout: '<svg ' + SW + '><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>',
+    trash: '<svg ' + SW + '><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>',
+    pencil: '<svg ' + SW + '><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>',
+    agent: '<svg ' + SW + '><path d="M12 2l2.2 4.9L19 9l-4.8 2.1L12 16l-2.2-4.9L5 9l4.8-2.1z"/><path d="M18 16l1 2.2 2 .8-2 .8-1 2.2-1-2.2-2-.8 2-.8z"/></svg>',
+    ask: '<svg ' + SW + '><path d="M21 12a8 8 0 0 1-8 8H8l-5 3 1.5-4.5A8 8 0 1 1 21 12z"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4"/><path d="M12 16h.01"/></svg>',
+    plan: '<svg ' + SW + '><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1.5 1.5L8 5"/><path d="M4 12l1.5 1.5L8 11"/><path d="M4 18l1.5 1.5L8 17"/></svg>'
+  };
+  function icon(name, color) {
+    return '<span style="color:' + (color || 'currentColor') + ';display:inline-flex">' + (ICONS[name] || "") + '</span>';
+  }
+
+  // ---------- markdown ----------
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function escAttr(s) { return esc(s).replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+  function inline(s) {
+    var out = esc(s);
+    out = out.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>');
+    out = out.replace(/`([^`]+)`/g, "<code>$1</code>");
+    out = out.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+    return out;
+  }
+
+  // ---------- code highlighting ----------
+  // Colors come from the PyCharm editor scheme (see codeColors in ChatShell) and arrive
+  // as CSS variables: --code-kw, --code-str, … Without a scheme — the Darcula fallback.
+  var CODE_KW = {
+    python: "and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return self cls try while with yield".split(" "),
+    javascript: "async await break case catch class const continue debugger default delete do else export extends finally for function if import in instanceof let new of return static super switch this throw try typeof var void while with yield".split(" "),
+    typescript: "abstract as async await break case catch class const continue declare default delete do else enum export extends implements import in instanceof interface keyof let namespace new private protected public readonly return static super switch this throw try type typeof var void while yield".split(" "),
+    kotlin: "abstract actual annotation as break by catch class companion const constructor continue crossinline data do dynamic else enum expect external final finally for fun get if import in infix init inline inner interface internal is lateinit noinline object open operator out override package private protected public reified return sealed set super suspend tailrec this throw try typealias val var vararg when where while".split(" "),
+    java: "abstract assert boolean break byte case catch char class const continue default do double else enum extends final finally float for goto if implements import instanceof int interface long native new package private protected public return short static strictfp super switch synchronized this throw throws transient try void volatile while".split(" "),
+    go: "break case chan const continue default defer else fallthrough for func go goto if import interface map package range return select struct switch type var".split(" "),
+    rust: "as async await break const continue crate dyn else enum extern false fn for if impl in let loop match mod move mut pub ref return self static struct super trait true type unsafe use where while".split(" "),
+    csharp: "abstract as async await base bool break byte case catch char class const continue decimal default delegate do double else enum event explicit extern false finally fixed float for foreach get goto if implicit in int interface internal is lock long namespace new null object operator out override params private protected public readonly ref return sbyte sealed set short sizeof stackalloc static string struct switch this throw true try typeof uint ulong unchecked unsafe ushort using var virtual void volatile while".split(" "),
+    cpp: "alignas alignof auto bool break case catch char class const constexpr continue decltype default delete do double else enum explicit export extern false float for friend goto if inline int long mutable namespace new noexcept nullptr operator private protected public register return short signed sizeof static struct switch template this throw true try typedef typename union unsigned using virtual void volatile while".split(" "),
+    php: "abstract and array as break callable case catch class clone const continue declare default do echo else elseif empty enddeclare endfor endforeach endif endswitch endwhile eval exit extends final finally fn for foreach function global goto if implements include include_once instanceof insteadof interface isset list match namespace new or print private protected public readonly require require_once return static switch throw trait try unset use var while xor yield".split(" "),
+    ruby: "alias and begin break case class def defined do else elsif end ensure false for if in module next nil not or redo rescue retry return self super then true undef unless until when while yield".split(" "),
+    bash: "alias bg break case cd continue do done elif else esac eval exec exit export fi for function getopts if in local pwd read readonly return select set shift source then time trap type ulimit umask unalias unset until wait while".split(" "),
+    sql: "select from where group by order having insert into values update set delete join left right inner outer full on as distinct limit offset union all and or not null is like ilike in between exists case when then else end create table index view drop alter add primary key foreign references default constraint unique returning with".split(" "),
+    json: [],
+    yaml: [],
+    xml: [],
+    css: [],
+    diff: []
+  };
+  var CODE_CONST = {
+    python: "True False None".split(" "),
+    javascript: "true false null undefined NaN Infinity".split(" "),
+    typescript: "true false null undefined".split(" "),
+    kotlin: "true false null".split(" "),
+    java: "true false null".split(" "),
+    go: "true false nil iota".split(" "),
+    rust: "true false None Some Ok Err".split(" "),
+    csharp: "true false null".split(" "),
+    cpp: "true false nullptr NULL".split(" "),
+    php: "true false null".split(" "),
+    ruby: "true false nil".split(" "),
+    bash: "true false".split(" "),
+    sql: "null true false".split(" "),
+    json: "true false null".split(" "),
+    yaml: "true false null yes no on off".split(" "),
+    css: [], xml: [], diff: []
+  };
+  var LANG_ALIAS = {
+    py: "python", python3: "python", js: "javascript", node: "javascript", mjs: "javascript",
+    ts: "typescript", tsx: "typescript", jsx: "javascript", kt: "kotlin", kts: "kotlin",
+    sh: "bash", shell: "bash", zsh: "bash", console: "bash", consoleoutput: "bash",
+    yml: "yaml", "c++": "cpp", cxx: "cpp", cc: "cpp", cs: "csharp", "c#": "csharp",
+    golang: "go", rb: "ruby", html: "xml", htm: "xml", svg: "xml", toml: "yaml", ini: "yaml"
+  };
+  // for blocks without a language hint: keywords of the most common languages combined
+  var GENERIC_KW = ("def class return if else elif for while import from as try except finally with lambda pass raise break continue " +
+    "function const let var new this async await yield public private protected static void int str bool " +
+    "fun val when object interface package").split(" ");
+  var HL_MAX = 200000;
+
+  function detectLang(hint, code) {
+    var l = String(hint || "").trim().toLowerCase().split(/[\s,:;]/)[0];
+    if (l && (CODE_KW[l] !== undefined || LANG_ALIAS[l])) return LANG_ALIAS[l] || l;
+    var t = String(code || "");
+    if (/\bdef\s+\w+\s*\(|\bself\.|\bprint\(/.test(t)) return "python";
+    if (/\bfunction\s+\w+\s*\(|\b(const|let)\s+\w+\s*=|\bconsole\.log|=>\s*\{/.test(t)) return "javascript";
+    if (/\bfun\s+\w+\s*\(|\bval\s+\w+\s*[:=]|\bdata class\b/.test(t)) return "kotlin";
+    if (/^\s*[\[{][\s\S]*[\]}]\s*$/.test(t) && /"\s*:/.test(t)) return "json";
+    if (/^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE)\b/i.test(t)) return "sql";
+    return "";
+  }
+
+  function highlight(code, langHint) {
+    var text = String(code === undefined || code === null ? "" : code);
+    if (text.length > HL_MAX) return esc(text);
+    var lang = detectLang(langHint, text);
+    var kw = CODE_KW[lang] || GENERIC_KW;
+    var konst = CODE_CONST[lang] || [];
+    var kwSet = Object.create(null);
+    for (var a = 0; a < kw.length; a++) kwSet[kw[a]] = 1;
+    var constSet = Object.create(null);
+    for (var b = 0; b < konst.length; b++) constSet[konst[b]] = 1;
+    var hashComments = lang === "python" || lang === "bash" || lang === "yaml" || lang === "ruby" || lang === "sql";
+    var commentRe = hashComments ? /#[^\n]*|--[^\n]*/y : /\/\/[^\n]*|\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->/y;
+    var stringRe = /"""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`/y;
+    var decoRe = /@[A-Za-z_][\w.]*/y;
+    var numRe = /(?:0[xX][0-9a-fA-F_]+|\d[\d_]*(?:\.[\d_]+)?(?:[eE][+-]?\d+)?)/y;
+    var idRe = /[A-Za-z_$][\w$]*/y;
+    var wsRe = /\s+/y;
+    var out = [], i = 0, n = text.length, guard = 0;
+    function take(re) {
+      re.lastIndex = i;
+      var m = re.exec(text);
+      return (m && m.index === i) ? m[0] : null;
+    }
+    while (i < n && guard++ < 120000) {
+      var lex = take(commentRe);
+      if (lex) { out.push('<span class="tok-com">' + esc(lex) + "</span>"); i += lex.length; continue; }
+      lex = take(stringRe);
+      if (lex) { out.push('<span class="tok-str">' + esc(lex) + "</span>"); i += lex.length; continue; }
+      lex = take(decoRe);
+      if (lex) { out.push('<span class="tok-dec">' + esc(lex) + "</span>"); i += lex.length; continue; }
+      lex = take(numRe);
+      if (lex) { out.push('<span class="tok-num">' + esc(lex) + "</span>"); i += lex.length; continue; }
+      lex = take(idRe);
+      if (lex) {
+        var cls = kwSet[lex] ? "kw" : (constSet[lex] ? "const" : (/^\s*\(/.test(text.substr(i + lex.length, 2)) ? "fn" : ""));
+        out.push(cls ? '<span class="tok-' + cls + '">' + esc(lex) + "</span>" : esc(lex));
+        i += lex.length; continue;
+      }
+      lex = take(wsRe);
+      if (lex) { out.push(esc(lex)); i += lex.length; continue; }
+      out.push(esc(text.charAt(i)));
+      i++;
+    }
+    if (i < n) out.push(esc(text.slice(i)));
+    return out.join("");
+  }
+
+  // ---------- markdown ----------
+  function codeBlockHTML(codeText, langHint) {
+    var lang = detectLang(langHint, codeText);
+    var label = String(langHint || "").trim().toLowerCase() || lang || "text";
+    return '<div class="codeblock"><div class="cbhead"><span class="cblang">' + esc(label) + "</span>" +
+      '<button class="cbcopy" data-tip="Copy code">' + icon("copy") + '<span class="cblabel">Copy</span></button></div>' +
+      "<pre><code>" + highlight(codeText, langHint) + "</code></pre></div>";
+  }
+
+  function splitRow(row) {
+    var s = String(row).trim();
+    if (s.charAt(0) === "|") s = s.slice(1);
+    if (s.charAt(s.length - 1) === "|") s = s.slice(0, -1);
+    var cells = [], cur = "", escaped = false;
+    for (var i = 0; i < s.length; i++) {
+      var ch = s.charAt(i);
+      if (escaped) { cur += ch; escaped = false; continue; }
+      if (ch === "\\") { escaped = true; cur += ch; continue; }
+      if (ch === "|") { cells.push(cur.trim()); cur = ""; continue; }
+      cur += ch;
+    }
+    cells.push(cur.trim());
+    return cells;
+  }
+  function isTableSeparator(line) {
+    if (String(line).indexOf("-") < 0) return false;
+    var cells = splitRow(line);
+    if (!cells.length) return false;
+    for (var i = 0; i < cells.length; i++) {
+      if (!/^:?-{2,}:?$/.test(cells[i])) return false;
+    }
+    return true;
+  }
+  function tableHTML(header, sep, rows) {
+    var alignCells = splitRow(sep), align = [];
+    for (var a = 0; a < alignCells.length; a++) {
+      var c = alignCells[a];
+      var left = c.charAt(0) === ":", right = c.charAt(c.length - 1) === ":";
+      align.push(left && right ? "center" : (right ? "right" : (left ? "left" : "")));
+    }
+    var cols = header.length;
+    function rowHtml(list, tag) {
+      var s = "";
+      for (var i = 0; i < cols; i++) {
+        var style = align[i] ? ' style="text-align:' + align[i] + '"' : "";
+        s += "<" + tag + style + ">" + inline(list[i] === undefined ? "" : list[i]) + "</" + tag + ">";
+      }
+      return s;
+    }
+    var html = '<div class="mdtable"><table><thead><tr>' + rowHtml(header, "th") + "</tr></thead><tbody>";
+    for (var r = 0; r < rows.length; r++) html += "<tr>" + rowHtml(rows[r], "td") + "</tr>";
+    return html + "</tbody></table></div>";
+  }
+
+  function md(t) {
+    var lines = String(t).replace(/\r\n/g, "\n").split("\n");
+    var html = "", para = [], inFence = false, fenceLang = "", code = [], inList = false;
+    function flushPara() {
+      if (para.length === 0) return;
+      if (inList) { html += "</ul>"; inList = false; }
+      html += "<p>" + inline(para.join(" ")) + "</p>";
+      para = [];
+    }
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!inFence && line.indexOf("```") === 0) {
+        flushPara();
+        inFence = true;
+        fenceLang = line.slice(3).trim();
+        code = [];
+        continue;
+      }
+      if (inFence) {
+        if (line.indexOf("```") === 0) {
+          inFence = false;
+          html += codeBlockHTML(code.join("\n"), fenceLang);
+          code = [];
+          fenceLang = "";
+        } else {
+          code.push(lines[i]);
+        }
+        continue;
+      }
+      if (!line) { flushPara(); continue; }
+      // GFM table: a row with "|" and a separator row right after it
+      if (line.indexOf("|") >= 0 && i + 1 < lines.length && isTableSeparator(lines[i + 1].trim())) {
+        flushPara();
+        var header = splitRow(line);
+        var sep = lines[i + 1].trim();
+        i += 2;
+        var rows = [];
+        while (i < lines.length) {
+          var rl = lines[i].trim();
+          if (!rl || rl.indexOf("|") < 0) break;
+          rows.push(splitRow(rl));
+          i++;
+        }
+        i--;
+        html += tableHTML(header, sep, rows);
+        continue;
+      }
+      var h = line.match(/^(#{1,4})\s+(.*)$/);
+      if (h) { flushPara(); var lv = Math.min(4, h[1].length + 2); html += "<h" + lv + ">" + inline(h[2]) + "</h" + lv + ">"; continue; }
+      var li = line.match(/^(?:[-*]|\d+[.)])\s+(.*)$/);
+      if (li) {
+        if (!inList) { flushPara(); html += "<ul>"; inList = true; }
+        html += "<li>" + inline(li[1]) + "</li>";
+        continue;
+      }
+      para.push(line);
+    }
+    flushPara();
+    if (inFence) html += codeBlockHTML(code.join("\n"), fenceLang);
+    return html;
+  }
+
+  function fmtTok(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
+    if (n >= 1000) return (n / 1000).toFixed(1) + "K";
+    return String(n);
+  }
+  function fmtDur(ms) {
+    if (ms >= 3600000) return (ms / 3600000).toFixed(1) + "h";
+    if (ms >= 60000) return (ms / 60000).toFixed(1) + "m";
+    if (ms >= 1000) return (ms / 1000).toFixed(1) + "s";
+    return ms + "ms";
+  }
+
+  // ---------- global state ----------
+  var chats = {};
+  var chatOrder = [];
+  var activeId = null;
+  var globalFontScale = INIT.fontScale || 100;
+
+  function activeChat() { return activeId ? chats[activeId] : null; }
+
+  function applyFontScale(s) {
+    globalFontScale = s;
+    var z = Math.max(0.5, Math.min(2, s / 100));
+    document.body.style.zoom = String(z);
+    // we do not touch the body box: under zoom the body's own box stays the size
+    // of the window, only the content scales — otherwise the panel drifts off screen
+    calibrateLayer();
+    repositionPopups();
+  }
+  applyFontScale(globalFontScale);
+  $("fontDec").onclick = function () { toJava({ type: "fontDec" }); };
+  $("fontInc").onclick = function () { toJava({ type: "fontInc" }); };
+
+  // ---------- chat creation ----------
+  function createChat(chatId, title) {
+    // idempotent: a repeated chatAdded does not create duplicate sections
+    if (chats[chatId]) {
+      if (chatOrder.indexOf(chatId) < 0) chatOrder.push(chatId);
+      activateChat(chatId);
+      return chats[chatId];
+    }
+    var section = document.createElement("div");
+    section.className = "chatview hidden";
+    section.dataset.chatId = chatId;
+    section.innerHTML =
+      '<div class="messages"></div>' +
+      '<div class="chipsrow"></div>' +
+      '<div class="imgrows"></div>' +
+      '<footer>' +
+      '  <textarea class="input" placeholder="' + escAttr(L10N.placeholder) + '"></textarea>' +
+      '  <div class="controls">' +
+      '    <div class="ctl"><span class="cap">' + esc(L10N.capMode) + '</span>' +
+      '      <div class="dd ddmode"><button class="dd-btn" data-tip-side="top" data-tip="' + escAttr(L10N.tipMode) + '"><span class="dd-label">Agent</span></button><div class="dd-menu"></div></div></div>' +
+      '    <span class="spacer" style="flex:1"></span>' +
+      '    <div class="ctl"><span class="cap">' + esc(L10N.capPolicy) + '</span>' +
+      '      <div class="dd ddpolicy"><button class="dd-btn" data-tip-side="top" data-tip="' + escAttr(L10N.tipPolicy) + '"><span class="dd-label"></span></button><div class="dd-menu"></div></div></div>' +
+      '    <div class="ctl"><span class="cap">' + esc(L10N.capModel) + '</span>' +
+      '      <div class="dd ddmodel"><button class="dd-btn" data-tip-side="top" data-tip="' + escAttr(L10N.tipModel) + '"><span class="dd-label">—</span></button><div class="dd-menu"></div></div></div>' +
+      '    <div class="ctl"><span class="cap">' + esc(L10N.capEffort) + '</span>' +
+      '      <div class="dd ddeffort"><button class="dd-btn" data-tip-side="top" data-tip="' + escAttr(L10N.tipEffort) + '"><span class="dd-label">' + esc(L10N.effortAuto) + '</span></button><div class="dd-menu"></div></div></div>' +
+      '    <div class="ctl"><span class="cap">' + esc(L10N.capAttach) + '</span>' +
+      '      <button class="attachbtn" data-tip-side="top" data-tip="' + escAttr(L10N.tipAttach) + '"></button></div>' +
+      '    <div class="ctl ctl-actions"><div class="actions">' +
+      '      <button class="stopbtn" data-tip-side="top" data-tip="' + escAttr(L10N.tipStop) + '"></button>' +
+      '      <button class="sendbtn"></button>' +
+      '    </div></div>' +
+      '  </div>' +
+      '</footer>';
+
+    var st = {
+      id: chatId,
+      title: title || chatId,
+      section: section,
+      messages: section.querySelector(".messages"),
+      chips: section.querySelector(".chipsrow"),
+      imgrows: section.querySelector(".imgrows"),
+      input: section.querySelector(".input"),
+      sendBtn: section.querySelector(".sendbtn"),
+      stopBtn: section.querySelector(".stopbtn"),
+      attachBtn: section.querySelector(".attachbtn"),
+      running: false,
+      pinned: true,        // the message list is stuck to the bottom: new turn chunks are pulled down
+      mode: "Agent",
+      queue: [],           // ids of messages waiting to be sent (sent by Kotlin, shown here)
+      streamQueue: [],
+      nextCharAt: 0,
+      currentAssistant: null,
+      currentReasoning: null,
+      reasoningChars: 0,
+      turnStart: 0,
+      toolCards: [],
+      metricsData: {
+        model: INIT.model || "", total: 0, input: 0, output: 0, reasoning: 0,
+        cacheRead: 0, cacheWrite: 0, prompt: 0, cacheHit: 0, speed: 0, turns: 0,
+        duration: 0, lastReset: null, compacted: 0, lastInput: 0, rows: []
+      },
+      toolsList: [],
+      toolsSent: false,
+      questionCards: {}
+    };
+    chats[chatId] = st;
+    if (chatOrder.indexOf(chatId) < 0) chatOrder.push(chatId);
+    $("views").appendChild(section);
+
+    // scrolled up to read — unstick; back at the bottom — follow the turn again
+    st.messages.addEventListener("scroll", function () { st.pinned = nearBottom(st, 40); });
+
+    st.attachBtn.innerHTML = icon("plus");
+    st.stopBtn.innerHTML = icon("stop") + "<span>" + esc(L10N.stop) + "</span>";
+    setSendButton(st);
+    setComposerPlaceholder(st);
+
+    // while the agent runs, a new message goes into the queue (like in Cursor/DSH)
+    st.input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendText(st);
+      }
+    });
+    st.sendBtn.addEventListener("click", function () { sendText(st); });
+    st.stopBtn.addEventListener("click", function () { toJava({ type: "stop", chatId: chatId }); });
+
+    // dropdowns
+    st.modeSel = makeDropdown(
+      st.section.querySelector(".ddmode .dd-btn"), st.section.querySelector(".ddmode .dd-menu"),
+      [{ value: "Agent", label: "Agent", icon: "agent" },
+       { value: "Ask", label: "Ask", icon: "ask" },
+       { value: "Plan", label: "Plan", icon: "plan" }],
+      INIT.mode || "Agent",
+      function (v) { st.mode = v; toJava({ type: "mode", chatId: chatId, mode: v }); });
+    st.policySel = makeDropdown(
+      st.section.querySelector(".ddpolicy .dd-btn"), st.section.querySelector(".ddpolicy .dd-menu"),
+      [{ value: "never", label: L10N.policyNever, icon: "unlock" }, { value: "ask", label: L10N.policyAsk, icon: "lock" }],
+      INIT.policy || "never",
+      function (v) { toJava({ type: "policy", chatId: chatId, policy: v }); });
+    st.modelSel = makeDropdown(
+      st.section.querySelector(".ddmodel .dd-btn"), st.section.querySelector(".ddmodel .dd-menu"),
+      (INIT.modelList || []).map(function (m) { return { value: m, label: (INIT.modelLabels && INIT.modelLabels[m]) || m }; }),
+      INIT.model || "",
+      function (v) { toJava({ type: "model", chatId: chatId, model: v }); });
+    st.effortSel = makeDropdown(
+      st.section.querySelector(".ddeffort .dd-btn"), st.section.querySelector(".ddeffort .dd-menu"),
+      [{ value: "", label: L10N.effortAuto }, { value: "low", label: "low" }, { value: "medium", label: "medium" }, { value: "high", label: "high" }],
+      INIT.effort !== undefined ? INIT.effort : "",
+      function (v) { toJava({ type: "effort", chatId: chatId, effort: v }); });
+
+    st.attachBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      openAttachMenu(st);
+    });
+
+    return st;
+  }
+
+  function setSendButton(st) {
+    // the send button always sends: during a turn the message goes to the queue
+    st.sendBtn.innerHTML = icon("send") + "<span>" + esc(st.running ? L10N.queue : L10N.send) + "</span>";
+    st.sendBtn.classList.remove("stop");
+    st.sendBtn.setAttribute("data-tip", st.running ? L10N.tipSendQueue : L10N.tipSend);
+    if (st.stopBtn) st.stopBtn.style.display = st.running ? "inline-flex" : "none";
+  }
+  function setComposerPlaceholder(st) {
+    st.input.placeholder = L10N.placeholder;
+  }
+
+  function sendText(st) {
+    var text = st.input.value.trim();
+    var hasImg = st.imgrows.querySelectorAll("img").length > 0;
+    if (!text && !hasImg) return;
+    st.input.value = "";
+    st.pinned = true;      // our request was sent — keep the message list at the agent's answer
+    // Kotlin draws the bubble: immediately (userText) or as "queued" (userQueued)
+    toJava({ type: "send", chatId: st.id, text: text });
+  }
+
+  // ---------- tabs ----------
+  $("emptyNewBtn").innerHTML = icon("plus") + "<span>New chat</span>";
+  $("emptyNewBtn").onclick = function () { toJava({ type: "newChat" }); };
+
+  function renderTabs() {
+    var bar = $("tabbar");
+    bar.innerHTML = "";
+    chatOrder.forEach(function (id) {
+      var st = chats[id];
+      var tab = document.createElement("div");
+      tab.className = "tab" + (id === activeId ? " active" : "");
+      tab.title = st.title;
+      var label = document.createElement("span");
+      label.textContent = st.title.length > 28 ? st.title.slice(0, 27) + "…" : st.title;
+      tab.appendChild(label);
+      var x = document.createElement("button");
+      x.className = "x";
+      x.innerHTML = icon("x");
+      x.setAttribute("data-tip", "Close chat");
+      x.onclick = function (e) {
+        e.stopPropagation();
+        toJava({ type: "closeChat", chatId: id });
+      };
+      tab.appendChild(x);
+      tab.onclick = function () { activateChat(id); };
+      tab.oncontextmenu = function (e) {
+        e.preventDefault();
+        openTabMenu(id, e.clientX, e.clientY);
+      };
+      bar.appendChild(tab);
+    });
+    var plus = document.createElement("button");
+    plus.className = "bar-btn";
+    plus.innerHTML = icon("plus");
+    plus.setAttribute("data-tip", "New chat");
+    plus.onclick = function () { toJava({ type: "newChat" }); };
+    bar.appendChild(plus);
+    var menu = document.createElement("button");
+    menu.className = "bar-btn";
+    menu.innerHTML = icon("menu");
+    menu.setAttribute("data-tip", "Menu: chat history, web DSH, layout, settings");
+    menu.onclick = function (e) { e.stopPropagation(); openMenu(menu); };
+    bar.appendChild(menu);
+  }
+
+  function activateChat(id) {
+    if (id && !chats[id]) return;
+    activeId = id;
+    chatOrder.forEach(function (cid) {
+      var st = chats[cid];
+      if (st) st.section.classList.toggle("hidden", cid !== id);
+    });
+    // hide orphaned sections too (a guard against any duplicates)
+    var sections = $("views").querySelectorAll(".chatview");
+    for (var i = 0; i < sections.length; i++) {
+      var sid = sections[i].dataset.chatId;
+      sections[i].classList.toggle("hidden", sid !== id);
+    }
+    $("emptyState").classList.toggle("hidden", !!activeId);
+    // the chat may have progressed while hidden: if the list was at the bottom — show the end
+    var shown = chats[id];
+    if (shown) scrollBottom(shown);
+    renderTabs();
+    updateHeader();
+  }
+
+  function updateHeader() {
+    var st = activeChat();
+    $("title").textContent = st ? st.title : "DSH Assistant";
+    setMetricsHeader(st);
+    renderStatus();
+  }
+
+  // ---------- DSH status (accurate, no sticking, no layout jumps) ----------
+  var sdkState = "ready";
+  var sdkDetail = "";
+  var STATUS_TEXT = {
+    ready: "", busy: "DSH busy", starting: "DSH starting…",
+    failed: "DSH unavailable", down: "DSH stopped"
+  };
+  var STATUS_TIP = {
+    ready: "DSH is ready",
+    busy: "DSH is running a request",
+    starting: "DSH is starting — waiting until it is ready",
+    failed: "DSH failed to start — see the chat for details (expand the error)",
+    down: "DSH process stopped — the next request will start it again"
+  };
+  function setSdkStatus(state, detail) {
+    sdkState = state || "ready";
+    sdkDetail = detail || "";
+    renderStatus();
+  }
+  function anyChatRunning() {
+    for (var i = 0; i < chatOrder.length; i++) {
+      var c = chats[chatOrder[i]];
+      if (c && c.running) return true;
+    }
+    return false;
+  }
+  function renderStatus() {
+    var st = activeChat();
+    var el = $("status");
+    var queued = (st && st.queue) ? st.queue.length : 0;
+    if (st && st.running) {
+      el.className = "working";
+      $("statusText").textContent = queued > 0 ? ("agent working · queued: " + queued) : "agent working";
+      el.setAttribute("data-tip", queued > 0
+        ? "Agent is running a turn; further messages are sent after it finishes"
+        : "Agent is running a turn");
+      return;
+    }
+    // "DSH busy" means "DSH is running someone's turn". If no chat is working,
+    // busy must not be shown: the SDK status may have stuck (process restart,
+    // request send error) and then the panel lies about "running a request".
+    var sdk = (sdkState === "busy" && !anyChatRunning()) ? "ready" : sdkState;
+    var text = STATUS_TEXT[sdk] !== undefined ? STATUS_TEXT[sdk] : "";
+    if (queued > 0) text = (text ? text + " · " : "") + "queued: " + queued;
+    el.className = sdk;
+    $("statusText").textContent = text;
+    el.setAttribute("data-tip", sdkDetail ? (sdkDetail.length > 300 ? sdkDetail.slice(0, 300) + "…" : sdkDetail)
+      : (STATUS_TIP[sdk] || "DSH status"));
+  }
+
+  // ---------- dropdowns ----------
+  function makeDropdown(btn, menu, items, current, onChange) {
+    var value = current;
+    var allItems = items;
+    var label = btn.querySelector(".dd-label");
+    function itemOf(v) { for (var i = 0; i < allItems.length; i++) { if ((allItems[i].value || allItems[i]) === v) return allItems[i]; } return null; }
+    function renderMenu() {
+      menu.innerHTML = "";
+      allItems.forEach(function (item) {
+        var v = item.value || item;
+        var b = document.createElement("button");
+        b.innerHTML = (item.icon ? icon(item.icon) + " " : "") + (item.label || v);
+        if (v === value) b.classList.add("selected");
+        b.onclick = function (e) { e.stopPropagation(); setValue(v); close(); };
+        menu.appendChild(b);
+      });
+    }
+    function setValue(v) {
+      value = v;
+      var it = itemOf(v);
+      label.innerHTML = (it && it.icon ? icon(it.icon) + " " : "") + (it && it.label ? it.label : v);
+      if (onChange) onChange(v);
+    }
+    function open() {
+      renderMenu();
+      menu.classList.add("open");
+      // the composer sits at the bottom edge: open the list upwards, otherwise it goes off screen.
+      // The anchor is the whole column with its caption, so the caption stays visible above the list
+      var anchorEl = (btn.closest && btn.closest(".ctl")) || btn;
+      placePopup(menu, anchorEl.getBoundingClientRect(), { side: "top" });
+      trackPopup(menu, anchorEl, { side: "top" });
+    }
+    function close() { menu.classList.remove("open"); untrackPopup(menu); }
+    btn.onclick = function (e) { e.stopPropagation(); if (menu.classList.contains("open")) close(); else open(); };
+    document.addEventListener("click", close);
+    setValue(current);
+    return {
+      setValue: setValue,
+      getValue: function () { return value; },
+      setItems: function (ni) { allItems = ni; },
+      renderMenu: renderMenu
+    };
+  }
+
+  // ---------- attachments menu ----------
+  function openAttachMenu(st) {
+    var menu = $("attachMenu");
+    menu.innerHTML = "";
+    [["attachImage", "image", L10N.attachImage], ["attachFile", "file", L10N.attachFile]].forEach(function (it) {
+      var b = document.createElement("button");
+      b.innerHTML = icon(it[1]) + " " + esc(it[2]);
+      b.onclick = function (ev) {
+        ev.stopPropagation();
+        menu.classList.remove("open");
+        toJava({ type: it[0], chatId: st.id });
+      };
+      menu.appendChild(b);
+    });
+    menu.classList.add("open");
+    var anchorEl = (st.attachBtn.closest && st.attachBtn.closest(".ctl")) || st.attachBtn;
+    placePopup(menu, anchorEl.getBoundingClientRect(), { side: "top" });
+    trackPopup(menu, anchorEl, { side: "top" });
+  }
+  document.addEventListener("click", function () { $("attachMenu").classList.remove("open"); untrackPopup($("attachMenu")); });
+
+  // ---------- ⋯ menu ----------
+  function openMenu(anchor) {
+    var menu = $("menuPop");
+    menu.innerHTML = "";
+    var items = [
+      { ic: "history", label: "Chat history", act: function () { openHistory(anchor); } },
+      { ic: "web", label: "Open web DSH", act: function () { toJava({ type: "menuWeb" }); } },
+      { ic: "layout", label: "Layout: auto/horizontal/vertical", act: function () { toJava({ type: "menuLayout" }); } },
+      { ic: "file", label: "Show/hide Changes", act: function () { toJava({ type: "menuChanges" }); } },
+      { ic: "restart", label: "Restart DSH SDK", act: function () { toJava({ type: "menuRestart" }); } },
+      { ic: "settings", label: "DSH Assistant Settings…", act: function () { toJava({ type: "menuSettings" }); } }
+    ];
+    items.forEach(function (it) {
+      var b = document.createElement("button");
+      b.innerHTML = icon(it.ic) + "<span>" + it.label + "</span>";
+      b.onclick = function (e) {
+        e.stopPropagation();
+        menu.classList.remove("open");
+        it.act();
+      };
+      menu.appendChild(b);
+    });
+    menu.classList.add("open");
+    var r = anchor.getBoundingClientRect();
+    placePopup(menu, { left: Math.max(4, r.right - 190), top: r.top, bottom: r.bottom }, { right: r.right });
+    trackPopup(menu, anchor);
+  }
+  document.addEventListener("click", function () { $("menuPop").classList.remove("open"); untrackPopup($("menuPop")); });
+
+  // ---------- tab menu (right click) ----------
+  function openTabMenu(id, x, y) {
+    var menu = $("tabMenu");
+    menu.innerHTML = "";
+    function item(label, ic, act) {
+      var b = document.createElement("button");
+      b.innerHTML = icon(ic) + "<span>" + label + "</span>";
+      b.onclick = function (e) { e.stopPropagation(); menu.classList.remove("open"); act(); };
+      menu.appendChild(b);
+    }
+    item("Rename…", "pencil", function () {
+      var name = prompt("New chat name:", chats[id] ? chats[id].title : "");
+      if (name && name.trim()) toJava({ type: "renameChat", chatId: id, name: name.trim() });
+    });
+    item("Archive (close)", "history", function () { toJava({ type: "closeChat", chatId: id }); });
+    item("Delete session permanently", "trash", function () { toJava({ type: "deleteChat", chatId: id }); });
+    menu.classList.add("open");
+    placePopup(menu, { left: x, top: y, bottom: y });
+    untrackPopup(menu);   // the context menu is not tied to an element — just close it on click
+  }
+  document.addEventListener("click", function () { $("tabMenu").classList.remove("open"); });
+
+  // ---------- chat history ----------
+  var histData = { items: [], visible: 20 };
+  function openHistory(anchor) {
+    toJava({ type: "historyOpen" });
+  }
+  function renderHistory() {
+    var menu = $("historyPop");
+    menu.innerHTML = "";
+    var head = document.createElement("div");
+    head.className = "dd-head";
+    head.textContent = "Chat history · click to open, trash to delete";
+    menu.appendChild(head);
+    if (histData.items.length === 0) {
+      var b = document.createElement("button");
+      b.innerHTML = "<span style='color:var(--muted)'>Empty. Closed chats will appear here.</span>";
+      menu.appendChild(b);
+    }
+    var shown = 0;
+    histData.items.forEach(function (it) {
+      if (it.kind === "group") {
+        var g = document.createElement("div");
+        g.className = "dd-head";
+        g.textContent = it.label;
+        menu.appendChild(g);
+        return;
+      }
+      if (shown >= histData.visible) return;
+      shown++;
+      var b = document.createElement("button");
+      var dot = it.state === "error" ? '<span style="color:#c0392b">●</span> ' :
+        it.state === "question" ? '<span style="color:#e3b341">●</span> ' :
+        it.state === "answered" ? '<span style="color:#2e8b57">●</span> ' : "";
+      b.innerHTML = dot + "<span style='flex:1;overflow:hidden;text-overflow:ellipsis'>" + esc(it.title) + "</span><span style='color:var(--muted);font-size:10.5px'>" + esc(it.time) + "</span>";
+      b.onclick = function (e) {
+        e.stopPropagation();
+        menu.classList.remove("open");
+        toJava({ type: "historyOpenChat", id: it.id });
+      };
+      // Deletion is available both from the row button and by right click. Confirmation
+      // is shown by Kotlin — one dialog instead of JS-confirm + IDE dialog in a row.
+      function deleteFromHistory() {
+        menu.classList.remove("open");
+        toJava({ type: "historyDelete", id: it.id, title: it.title });
+      }
+      var del = document.createElement("span");
+      del.className = "hist-del";
+      del.title = "Delete chat permanently";
+      del.innerHTML = icon("trash");
+      del.onclick = function (e) {
+        e.stopPropagation();
+        deleteFromHistory();
+      };
+      b.appendChild(del);
+      b.oncontextmenu = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteFromHistory();
+      };
+      menu.appendChild(b);
+    });
+    if (shown < histData.items.filter(function (i) { return i.kind !== "group"; }).length) {
+      var more = document.createElement("button");
+      more.innerHTML = "<span style='color:var(--accent)'>Show more (+10)</span>";
+      more.onclick = function (e) { e.stopPropagation(); histData.visible += 10; renderHistory(); };
+      menu.appendChild(more);
+    }
+    menu.classList.add("open");
+    menu.style.minWidth = "380px";   // shrinks automatically if the window is narrower
+    var bar = $("menuPop");
+    if (bar.classList.contains("open")) {
+      placePopup(menu, bar.getBoundingClientRect());
+      trackPopup(menu, bar);
+    } else {
+      var tb = $("tabbar").getBoundingClientRect();
+      placePopup(menu, { left: tb.left + 4, top: tb.bottom, bottom: tb.bottom });
+      untrackPopup(menu);
+    }
+  }
+  document.addEventListener("click", function () { $("historyPop").classList.remove("open"); untrackPopup($("historyPop")); });
+
+  // ---------- message list ----------
+  function nearBottom(st, slack) {
+    var m = st.messages;
+    return m.scrollHeight - m.scrollTop - m.clientHeight <= (slack === undefined ? 80 : slack);
+  }
+  /**
+   * Auto-scroll. "Sticking" to the bottom is the st.pinned state, not a one-off check of
+   * proximity to the edge: one large chunk (tool card, markdown, note) shifts the list by
+   * more than slack, so "are we at the bottom?" forever returned false and the agent's answer
+   * stayed below the fold. Now: at the bottom — follow the turn, scrolled away — leave it.
+   */
+  function scrollBottom(st, force) {
+    if (force || st.pinned !== false) st.messages.scrollTop = st.messages.scrollHeight;
+  }
+
+  function newAssistantBubble(st) {
+    st.currentAssistant = document.createElement("div");
+    st.currentAssistant.className = "row assistant";
+    var b = document.createElement("div");
+    b.className = "bubble";
+    b.dataset.raw = "";
+    b.dataset.mdDirty = "0";
+    st.currentAssistant.appendChild(b);
+    st.messages.appendChild(st.currentAssistant);
+    scrollBottom(st);
+    return b;
+  }
+
+  // during the stream — plain text (fast, no reflow); markdown is rebuilt
+  // with a delay and at the end of the turn
+  function renderBubbleMd(b) {
+    b.dataset.mdDirty = "0";
+    b.innerHTML = md(b.dataset.raw || "");
+  }
+  function newReasoning(st) {
+    st.currentReasoning = document.createElement("div");
+    st.currentReasoning.className = "reasoning open";
+    var head = document.createElement("button");
+    head.className = "rhead";
+    head.innerHTML = icon("spark") + "<span class='rlabel'>Thinking…</span>";
+    head.onclick = function () {
+      var open = st.currentReasoning.classList.toggle("open");
+      head.querySelector(".rlabel").textContent = open ? "Hide reasoning" : (head.dataset.title || "Reasoning");
+    };
+    var body = document.createElement("div");
+    body.className = "rbody";
+    st.currentReasoning.appendChild(head);
+    st.currentReasoning.appendChild(body);
+    st.messages.appendChild(st.currentReasoning);
+    st.reasoningChars = 0;
+    scrollBottom(st);
+    return body;
+  }
+
+  function addUserBubble(st, text, opts) {
+    opts = opts || {};
+    st.currentAssistant = null;
+    var row = document.createElement("div");
+    row.className = "row user";
+    if (opts.id) row.dataset.queueId = opts.id;
+    var b = document.createElement("div");
+    b.className = "bubble" + (opts.queued ? " queued" : "");
+    b.innerHTML = md(text);
+    if (opts.queued) {
+      var badge = document.createElement("div");
+      badge.className = "qbadge";
+      var label = document.createElement("span");
+      label.textContent = "queued";
+      var cancel = document.createElement("button");
+      cancel.className = "qcancel";
+      cancel.innerHTML = icon("x");
+      cancel.setAttribute("data-tip", "Remove from queue");
+      cancel.onclick = function (e) {
+        e.stopPropagation();
+        toJava({ type: "unqueue", chatId: st.id, id: opts.id });
+      };
+      badge.appendChild(label);
+      badge.appendChild(cancel);
+      b.appendChild(badge);
+    }
+    row.appendChild(b);
+    st.messages.appendChild(row);
+    st.pinned = true;            // always show our own message: the answer follows
+    scrollBottom(st, true);
+  }
+  /** A queued message went to the agent: remove the "queued" badge. */
+  function markDequeued(st, id) {
+    var row = st.messages.querySelector('[data-queue-id="' + id + '"]');
+    if (!row) return;
+    row.removeAttribute("data-queue-id");
+    var b = row.querySelector(".bubble");
+    if (!b) return;
+    b.classList.remove("queued");
+    var badge = b.querySelector(".qbadge");
+    if (badge) badge.remove();
+  }
+
+  function addNote(st, text, isError) {
+    var d = document.createElement("div");
+    d.className = isError ? "note error-note" : "note";
+    if (isError) d.innerHTML = icon("alert");
+    var span = document.createElement("span");
+    span.textContent = text;
+    d.appendChild(span);
+    st.messages.appendChild(d);
+    scrollBottom(st);
+  }
+
+  function copyText(text) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (ignored) { /* fallback path below */ }
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.cssText = "position:fixed;left:-9999px;top:0";
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand("copy");
+      ta.remove();
+      return ok;
+    } catch (ignored) {
+      return false;
+    }
+  }
+
+  /**
+   * Chat error: short text + expandable traceback/log that can be copied and sent to
+   * support. Without details — a plain red note.
+   */
+  function addErrorCard(st, text, details) {
+    if (!details) { addNote(st, text, true); return; }
+    var card = document.createElement("div");
+    card.className = "ecard";
+    var head = document.createElement("button");
+    head.className = "ehead";
+    head.innerHTML = icon("alert") + "<span class='etext'></span><span class='echev'>▸</span>";
+    head.querySelector(".etext").textContent = text;
+    var chev = head.querySelector(".echev");
+    card.appendChild(head);
+    var body = document.createElement("div");
+    body.className = "ebody";
+    var actions = document.createElement("div");
+    actions.className = "eactions";
+    var copy = document.createElement("button");
+    copy.className = "ecopy";
+    copy.innerHTML = icon("copy") + '<span class="elabel">Copy traceback</span>';
+    var hint = document.createElement("span");
+    hint.className = "ehint";
+    hint.textContent = "Click the error to see details";
+    copy.onclick = function (e) {
+      e.stopPropagation();
+      copyText(details);
+      copy.classList.add("copied");
+      copy.querySelector(".elabel").textContent = "Copied";
+      setTimeout(function () {
+        copy.classList.remove("copied");
+        copy.querySelector(".elabel").textContent = "Copy traceback";
+      }, 1500);
+    };
+    actions.appendChild(copy);
+    actions.appendChild(hint);
+    body.appendChild(actions);
+    var pre = document.createElement("pre");
+    pre.textContent = details;
+    body.appendChild(pre);
+    card.appendChild(body);
+    head.onclick = function () {
+      var open = card.classList.toggle("open");
+      chev.textContent = open ? "▾" : "▸";
+      if (open && nearBottom(st)) scrollBottom(st, true);
+    };
+    st.messages.appendChild(card);
+    scrollBottom(st);
+  }
+  function formatArgs(args) {
+    try {
+      return JSON.stringify(JSON.parse(args), null, 2);
+    } catch (e) {
+      return String(args);
+    }
+  }
+  // expandable tool call card (DSH style: one row + expand details)
+  function addToolCard(st, name, args, callId, description) {
+    var card = document.createElement("div");
+    card.className = "toolcard";
+    card.dataset.callId = callId || "";
+
+    var head = document.createElement("div");
+    head.className = "tchead";
+    var chev = document.createElement("span");
+    chev.style.cssText = "color:var(--muted);font-size:11px;display:inline-flex;width:12px";
+    chev.textContent = "▸";
+    head.appendChild(chev);
+    head.appendChild(document.createElement("span")).innerHTML = icon("terminal", "#8f949c");
+    var nm = document.createElement("b");
+    nm.style.cssText = "font-weight:600;font-size:12px";
+    nm.textContent = name;
+    head.appendChild(nm);
+    var stt = document.createElement("span");
+    stt.className = "tcstatus";
+    stt.textContent = "running…";
+    head.appendChild(stt);
+    card.appendChild(head);
+
+    var body = document.createElement("div");
+    body.className = "tcbody";
+    var html = "";
+    if (description) html += "<div style='color:var(--muted);margin-bottom:4px'>" + esc(description) + "</div>";
+    if (args) html += "<div style='color:var(--muted);font-size:11px;margin-bottom:2px'>Arguments:</div><pre>" + esc(formatArgs(args)) + "</pre>";
+    html += "<div class='tcresult' style='display:none'><div style='color:var(--muted);font-size:11px;margin:4px 0 2px'>Result:</div><pre></pre></div>";
+    body.innerHTML = html;
+    card.appendChild(body);
+
+    head.onclick = function () {
+      var open = card.classList.toggle("open");
+      chev.textContent = open ? "▾" : "▸";
+      if (open && nearBottom(st)) scrollBottom(st, true);
+    };
+
+    st.messages.appendChild(card);
+    st.toolCards.push(card);
+    scrollBottom(st);
+    return card;
+  }
+
+  function fillToolResult(st, callId, text) {
+    var card = st.messages.querySelector('.toolcard[data-call-id="' + callId + '"]');
+    if (!card) return;
+    var res = card.querySelector(".tcresult");
+    if (res) {
+      res.style.display = "block";
+      res.querySelector("pre").textContent = text;
+    }
+    var stt = card.querySelector(".tcstatus");
+    if (stt) {
+      stt.textContent = "done";
+      stt.classList.add("done");
+    }
+    if (nearBottom(st)) scrollBottom(st, true);
+  }
+
+  function addTool(st, text) {
+    // legacy format — a plain string
+    var d = document.createElement("div");
+    d.className = "tool";
+    d.innerHTML = icon("terminal");
+    var span = document.createElement("span");
+    span.textContent = text;
+    d.appendChild(span);
+    st.messages.appendChild(d);
+    scrollBottom(st);
+  }
+
+  function addQuestionCard(st, callId, questions) {
+    var card = document.createElement("div");
+    card.className = "qcard";
+    var head = document.createElement("div");
+    head.className = "qhead";
+    head.innerHTML = icon("question") + "<span>Agent asks</span>";
+    card.appendChild(head);
+    var answers = [];
+    var idx = 0;
+    var selected = new Set();
+    var finished = false;
+
+    var qTitle = document.createElement("div");
+    qTitle.className = "q";
+    qTitle.style.fontWeight = "600";
+    card.appendChild(qTitle);
+    var qText = document.createElement("div");
+    qText.className = "q";
+    card.appendChild(qText);
+    var optsWrap = document.createElement("div");
+    optsWrap.className = "opts";
+    card.appendChild(optsWrap);
+    var textInput = document.createElement("input");
+    textInput.type = "text";
+    textInput.placeholder = "Your answer…";
+    textInput.style.cssText = "width:100%;margin-top:6px;padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font:inherit;font-size:12px;";
+    card.appendChild(textInput);
+    var nav = document.createElement("div");
+    nav.className = "opts";
+    nav.style.marginTop = "8px";
+    card.appendChild(nav);
+    var stEl = document.createElement("div");
+    stEl.className = "qstatus";
+    card.appendChild(stEl);
+    card.dataset.callId = callId;
+    st.messages.appendChild(card);
+    scrollBottom(st);
+
+    function render() {
+      var q = questions[idx];
+      qTitle.textContent = q.header ? q.header : "Question " + (idx + 1) + " of " + questions.length;
+      qText.textContent = q.question;
+      selected = new Set();
+      textInput.value = answers[idx] && answers[idx].free ? answers[idx].free : "";
+      optsWrap.innerHTML = "";
+      (q.options || []).forEach(function (opt) {
+        var pre = answers[idx] && answers[idx].labels && answers[idx].labels.indexOf(opt) >= 0;
+        var btn = document.createElement("button");
+        btn.textContent = opt;
+        if (pre) { btn.classList.add("selected"); selected.add(opt); }
+        btn.onclick = function () {
+          if (finished) return;
+          if (q.multi) {
+            if (selected.has(opt)) { selected.delete(opt); btn.classList.remove("selected"); }
+            else { selected.add(opt); btn.classList.add("selected"); }
+          } else {
+            selected.clear();
+            optsWrap.querySelectorAll("button").forEach(function (b) { b.classList.remove("selected"); });
+            selected.add(opt);
+            btn.classList.add("selected");
+          }
+        };
+        optsWrap.appendChild(btn);
+      });
+      nav.innerHTML = "";
+      function navBtn(label, act) {
+        var b = document.createElement("button");
+        b.textContent = label;
+        b.onclick = act;
+        nav.appendChild(b);
+      }
+      navBtn("Skip", function () { finish(null); });
+      if (idx > 0) navBtn("← Back", function () { saveCurrent(); idx--; render(); });
+      if (idx < questions.length - 1) {
+        navBtn("Next →", function () { saveCurrent(); idx++; render(); });
+      } else {
+        navBtn("Send", function () { finish(); });
+      }
+    }
+    function saveCurrent() {
+      var labels = Array.from(selected);
+      var free = textInput.value.trim();
+      answers[idx] = { labels: labels, free: free };
+    }
+    function finish(doSend) {
+      if (finished) return;
+      saveCurrent();
+      if (doSend !== null) {
+        finished = true;
+        var payload = answers.map(function (a, i) {
+          var q = questions[i];
+          var ans = (a && a.free) ? a.free : (a && a.labels && a.labels.length ? a.labels.join("; ") : "skipped");
+          return { question: q.question, answer: ans };
+        });
+        var visible = payload.map(function (p) { return p.question + " → " + p.answer; }).join("\\n");
+        addUserBubble(st, "My answers to the agent:\n" + visible);
+        stEl.textContent = "Sent to the agent";
+        toJava({ type: "answerAll", chatId: st.id, answers: payload });
+      } else {
+        finished = true;
+        stEl.textContent = "Question skipped";
+        toJava({ type: "answerSkip", chatId: st.id });
+      }
+      optsWrap.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
+      nav.innerHTML = "";
+      textInput.disabled = true;
+    }
+    render();
+  }
+
+  // ---------- stream ----------
+  function enqueueStream(st, kind, text, dt) {
+    var chars = Array.from(text);
+    var now = performance.now();
+    if (st.nextCharAt === 0) st.nextCharAt = now;
+    var t = Math.max(st.nextCharAt, now);
+    var fallback = chars.length > 2000 ? 12 : 14;
+    for (var i = 0; i < chars.length; i++) {
+      var d = (dt && dt.length > 0) ? (dt[i] !== undefined ? dt[i] : 14) : fallback;
+      st.streamQueue.push({ kind: kind, ch: chars[i], at: t });
+      t += Math.min(Math.max(d, 12), 250);
+    }
+  }
+  function flushStream(st) {
+    if (st.streamQueue.length === 0) return;
+    var now = performance.now();
+    var txt = "", rsn = "";
+    var n = 0;
+    while (st.streamQueue.length > 0 && now >= st.streamQueue[0].at && n < 400) {
+      var item = st.streamQueue.shift();
+      if (item.kind === "text") txt += item.ch; else rsn += item.ch;
+      n++;
+    }
+    if (txt) {
+      if (!st.currentAssistant) newAssistantBubble(st);
+      var b = st.currentAssistant.querySelector(".bubble");
+      b.dataset.raw = (b.dataset.raw || "") + txt;
+      b.textContent = b.dataset.raw;
+      b.dataset.mdDirty = "1";
+      // markdown at most every ~300 ms so the layout is not touched on every frame
+      var now2 = performance.now();
+      if (!b.dataset.lastMd || now2 - Number(b.dataset.lastMd) > 300) {
+        b.dataset.lastMd = String(now2);
+        renderBubbleMd(b);
+      }
+    }
+    if (rsn) {
+      if (!st.currentReasoning) newReasoning(st);
+      var body = st.currentReasoning.querySelector(".rbody");
+      body.textContent += rsn;
+      st.reasoningChars += rsn.length;
+      var head = st.currentReasoning.querySelector(".rhead");
+      head.dataset.title = "Thinking… (" + st.reasoningChars + " chars)";
+      head.querySelector(".rlabel").textContent = head.dataset.title;
+      st.currentReasoning.classList.add("open");
+    }
+    updateCaret(st);
+    if (txt || rsn) scrollBottom(st);
+  }
+  setInterval(function () {
+    chatOrder.forEach(function (id) {
+      var st = chats[id];
+      if (st && st.streamQueue.length > 0) flushStream(st);
+    });
+  }, 50);
+  function flushAllStream(st) {
+    for (var i = 0; i < st.streamQueue.length; i++) st.streamQueue[i].at = 0;
+    st.nextCharAt = 0;
+    var guard = 0;
+    while (st.streamQueue.length > 0 && guard++ < 500) flushStream(st);
+  }
+  function clearCarets(st) {
+    var bs = st.messages.querySelectorAll(".typing-caret");
+    for (var i = 0; i < bs.length; i++) bs[i].classList.remove("typing-caret");
+  }
+  /**
+   * The "typing" caret lives only in the bubble of the current stream. Previously a turn
+   * ended (turnEnd/ running=false) without calling updateCaret — the class stayed on the
+   * bubble and the blue marker kept blinking after every answer. Now the state is
+   * recomputed on every turn change, so extra carets cannot appear.
+   */
+  function updateCaret(st) {
+    var bubble = (st.running && st.currentAssistant) ? st.currentAssistant.querySelector(".bubble") : null;
+    clearCarets(st);
+    if (bubble) bubble.classList.add("typing-caret");
+  }
+
+  // ---------- chips and images ----------
+  function rebuildChips(st, chips) {
+    st.chips.innerHTML = "";
+    var reset = document.createElement("button");
+    reset.className = "resetbtn";
+    reset.innerHTML = icon("eraser") + "<span>Reset</span>";
+    reset.setAttribute("data-tip", "Reset session attachments (files and images)");
+    reset.onclick = function () { toJava({ type: "reset", chatId: st.id }); };
+    st.chips.appendChild(reset);
+    chips.forEach(function (c) {
+      var chip = document.createElement("span");
+      chip.className = "chip";
+      var name = c.path.length > 40 ? "…" + c.path.slice(-39) : c.path;
+      chip.appendChild(document.createTextNode(name + " · " + c.len + " chars"));
+      var x = document.createElement("button");
+      x.className = "x";
+      x.innerHTML = icon("x");
+      x.setAttribute("data-tip", "Remove file from session context");
+      x.onclick = function () { toJava({ type: "removeChip", chatId: st.id, path: c.path }); };
+      chip.appendChild(x);
+      st.chips.appendChild(chip);
+    });
+  }
+  function rebuildImages(st, imgs) {
+    st.imgrows.innerHTML = "";
+    imgs.forEach(function (img) {
+      var row = document.createElement("span");
+      row.className = "imgrow";
+      var im = document.createElement("img");
+      im.src = "data:" + img.mime + ";base64," + img.base64;
+      im.title = img.path;
+      row.appendChild(im);
+      var x = document.createElement("button");
+      x.className = "x";
+      x.innerHTML = icon("x");
+      x.onclick = function () { toJava({ type: "removeImage", chatId: st.id, id: img.id }); };
+      row.appendChild(x);
+      st.imgrows.appendChild(row);
+    });
+  }
+
+  // ---------- header: metrics and tools ----------
+  function setMetricsHeader(st) {
+    var btn = $("metricsBtn");
+    if (!st) { btn.innerHTML = icon("spark") + "<span>—</span>"; return; }
+    var m = st.metricsData;
+    var parts = [];
+    if (m) {
+      if (m.model) parts.push(m.model);
+      if (m.lastInput > 0) parts.push("context ~" + fmtTok(m.lastInput));
+      if (m.total > 0) {
+        var speed = m.speed >= 10 ? m.speed.toFixed(0) : m.speed.toFixed(1);
+        parts.push("in/out " + fmtTok(m.input) + "/" + fmtTok(m.output));
+        parts.push("cache " + m.cacheHit + "%");
+        parts.push(speed + " tok/s");
+      }
+    }
+    btn.innerHTML = icon("spark") + "<span>" + (parts.length ? parts.join(" · ") : (INIT.model || "metrics")) + "</span>";
+  }
+
+  function openMetricsPanel() {
+    var st = activeChat();
+    if (!st) return;
+    var m = st.metricsData;
+    if (!m || m.total === 0) {
+      var p = $("metricsPanel");
+      p.innerHTML = "<div style='color:var(--muted);padding:4px'>Metrics appear after the first request in the chat.</div>";
+      p.classList.toggle("hidden");
+      $("toolsPanel").classList.add("hidden");
+      return;
+    }
+    var html = "<div style='font-size:12.5px'>" +
+      "<div><b>" + fmtTok(m.total) + "</b> tokens — input " + fmtTok(m.prompt) +
+      " · output " + fmtTok(m.output) + (m.reasoning > 0 ? " · reasoning " + fmtTok(m.reasoning) : "") + "</div>" +
+      "<div>Cache: read <b>" + fmtTok(m.cacheRead) + "</b> (" + m.cacheHit + "% hit) · write " + fmtTok(m.cacheWrite) + "</div>" +
+      "<div>Speed: <b>" + m.speed.toFixed(1) + " tok/s</b> · turns: " + m.turns + " · time: " + fmtDur(m.duration) + "</div>" +
+      "<div>Last context reset: <b>" + (m.lastReset || "n/a") + "</b>" +
+      (m.compacted > 0 ? " (compacted " + fmtTok(m.compacted) + ")" : "") + "</div></div>";
+    html += "<table><thead><tr><th>Time</th><th>Input</th><th>Output</th><th>Cache%</th><th>Speed</th><th>Dur.</th></tr></thead><tbody>";
+    (m.rows || []).slice().reverse().slice(0, 40).forEach(function (r) {
+      html += "<tr>";
+      ["time", "input", "output", "cachePct", "speed", "dur"].forEach(function (k) {
+        html += "<td>" + esc(String(r[k])) + "</td>";
+      });
+      html += "</tr>";
+    });
+    html += "</tbody></table>";
+    var panel = $("metricsPanel");
+    panel.innerHTML = html;
+    panel.classList.toggle("hidden");
+    $("toolsPanel").classList.add("hidden");
+  }
+  $("metricsBtn").addEventListener("click", function (e) { e.stopPropagation(); openMetricsPanel(); });
+
+  var SKILLS = [
+    { name: "filesystem", description: "Project files: read, write, edit, search." },
+    { name: "office", description: "Documents, spreadsheets and presentations (if enabled in the profile)." },
+    { name: "plan-mode", description: "Plan mode: plan first, changes only after approval." },
+    { name: "web", description: "Web search and page reading (if enabled in the profile)." }
+  ];
+  function renderToolsPanel() {
+    var st = activeChat();
+    var html = "<div style='margin-bottom:8px;color:var(--muted);font-size:12px'>Tools reported by the active DSH session:</div>";
+    if (!st || st.toolsList.length === 0) {
+      html += "<div style='color:var(--muted)'>No data yet — send the first request and the list will appear.</div>";
+    } else {
+      st.toolsList.forEach(function (t) {
+        html += "<div style='padding:5px 0;border-bottom:1px solid var(--border)'><b>" + esc(t.name) + "</b>" +
+          (t.description ? "<div style='color:var(--muted);font-size:12px'>" + esc(t.description) + "</div>" : "") + "</div>";
+      });
+    }
+    html += "<h3>Skills</h3>";
+    SKILLS.forEach(function (sk) {
+      html += "<div style='padding:5px 0;border-bottom:1px solid var(--border)'><b>" + esc(sk.name) + "</b>" +
+        "<div style='color:var(--muted);font-size:12px'>" + esc(sk.description) + "</div></div>";
+    });
+    var panel = $("toolsPanel");
+    panel.innerHTML = html;
+    panel.classList.toggle("hidden");
+    $("metricsPanel").classList.add("hidden");
+  }
+  $("toolsBtn").innerHTML = icon("tools");
+  $("toolsBtn").addEventListener("click", function (e) { e.stopPropagation(); renderToolsPanel(); });
+
+  // ---------- paste and drag&drop ----------
+  function readFileAsDataURL(file, cb) { var r = new FileReader(); r.onload = function () { cb(String(r.result)); }; r.readAsDataURL(file); }
+  function readFileAsText(file, cb) { var r = new FileReader(); r.onload = function () { cb(String(r.result)); }; r.readAsText(file); }
+  function handleDroppedFiles(st, fileList) {
+    for (var i = 0; i < fileList.length; i++) {
+      (function (file) {
+        if (file.type && file.type.indexOf("image/") === 0) {
+          if (file.size > 8 * 1024 * 1024) { addNote(st, "Image " + file.name + " is larger than 8 MB — skipped.", true); return; }
+          readFileAsDataURL(file, function (dataUrl) {
+            var parts = dataUrl.split(",");
+            toJava({ type: "pasteImage", chatId: st.id, name: file.name, mime: file.type, base64: parts[1] });
+          });
+        } else {
+          if (file.size > 512 * 1024) { addNote(st, "File " + file.name + " is larger than 512 KB — attach it with “+”.", true); return; }
+          readFileAsText(file, function (text) {
+            toJava({ type: "pasteFile", chatId: st.id, name: file.name, content: text });
+          });
+        }
+      })(fileList[i]);
+    }
+  }
+  document.addEventListener("paste", function (e) {
+    var st = activeChat();
+    if (!st) return;
+    if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+      e.preventDefault();
+      handleDroppedFiles(st, e.clipboardData.files);
+    }
+  });
+  var dragCounter = 0;
+  document.addEventListener("dragenter", function (e) { e.preventDefault(); dragCounter++; document.body.classList.add("dragging"); });
+  document.addEventListener("dragleave", function (e) { e.preventDefault(); dragCounter = Math.max(0, dragCounter - 1); if (dragCounter === 0) document.body.classList.remove("dragging"); });
+  document.addEventListener("dragover", function (e) { e.preventDefault(); });
+  document.addEventListener("drop", function (e) {
+    e.preventDefault();
+    dragCounter = 0;
+    document.body.classList.remove("dragging");
+    var st = activeChat();
+    if (!st) return;
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleDroppedFiles(st, e.dataTransfer.files);
+    }
+  });
+
+  // ---------- dispatch from Java ----------
+  window.dsh = {
+    dispatch: function (op) {
+      var st = op.chatId ? chats[op.chatId] : null;
+      switch (op.op) {
+        case "chatAdded":
+          createChat(op.chatId, op.title || op.chatId);
+          if (!activeId) activateChat(op.chatId);
+          else renderTabs();
+          break;
+        case "chatTitle":
+          if (st) { st.title = op.text; renderTabs(); if (activeId === st.id) updateHeader(); }
+          break;
+        case "chatRemoved":
+          if (st) {
+            chatOrder = chatOrder.filter(function (i) { return i !== op.chatId; });
+            delete chats[op.chatId];
+            st.section.remove();
+            if (activeId === op.chatId) {
+              activeId = chatOrder.length ? chatOrder[chatOrder.length - 1] : null;
+              activateChat(activeId);
+            }
+            renderTabs();
+          }
+          break;
+        case "chatActive":
+          if (st) activateChat(op.chatId);
+          break;
+        case "userText": if (st) addUserBubble(st, op.text); break;
+        case "userQueued":
+          if (st) {
+            addUserBubble(st, op.text, { queued: true, id: op.id });
+            st.queue.push(op.id);
+            renderStatus();
+          }
+          break;
+        case "dequeue":
+          if (st) {
+            st.queue = st.queue.filter(function (i) { return i !== op.id; });
+            markDequeued(st, op.id);
+            renderStatus();
+          }
+          break;
+        case "unqueued":
+          if (st) {
+            st.queue = st.queue.filter(function (i) { return i !== op.id; });
+            var row = st.messages.querySelector('[data-queue-id="' + op.id + '"]');
+            if (row) row.remove();
+            renderStatus();
+          }
+          break;
+        case "assistantText":
+          if (!st) break;
+          st.currentAssistant = null;
+          var r = document.createElement("div"); r.className = "row assistant";
+          var b = document.createElement("div"); b.className = "bubble";
+          b.dataset.raw = op.text || "";
+          b.innerHTML = md(op.text || "");
+          r.appendChild(b); st.messages.appendChild(r); scrollBottom(st);
+          break;
+        case "stream": if (st) enqueueStream(st, op.kind, op.text, op.dt); break;
+        case "tool":
+          if (st) {
+            // text before the tool call must already be rendered (order: text → card → text)
+            flushAllStream(st);
+            if (op.name) {
+              addToolCard(st, op.name, op.args || "", op.callId || "", op.description || "");
+            } else {
+              addTool(st, op.text);
+            }
+            // text after the card starts a new bubble (order: text → card → text)
+            st.currentAssistant = null;
+          }
+          break;
+        case "toolResult":
+          if (st) fillToolResult(st, op.callId || "", op.text || "");
+          break;
+        case "note": if (st) addNote(st, op.text, false); break;
+        case "error": if (st) addErrorCard(st, op.text, op.details); break;
+        case "turnStart":
+          if (!st) break;
+          st.currentAssistant = null; st.currentReasoning = null; st.reasoningChars = 0;
+          st.streamQueue.length = 0; st.nextCharAt = 0; st.turnStart = Date.now();
+          st.toolCards = [];
+          break;
+        case "turnEnd":
+          if (!st) break;
+          flushAllStream(st);
+          if (st.currentReasoning) {
+            var secs = st.turnStart ? Math.max(1, Math.round((Date.now() - st.turnStart) / 1000)) : null;
+            var head = st.currentReasoning.querySelector(".rhead");
+            head.dataset.title = secs === null ? "Reasoning" : ("Thought for " + secs + "s");
+            head.querySelector(".rlabel").textContent = head.dataset.title;
+            head.dataset.done = "1";
+            st.currentReasoning.classList.remove("open");
+          }
+          if (st.currentAssistant) {
+            var bb = st.currentAssistant.querySelector(".bubble");
+            if (bb && bb.dataset.mdDirty === "1") renderBubbleMd(bb);
+          }
+          st.toolCards.forEach(function (card) {
+            var stt = card.querySelector(".tcstatus");
+            if (stt && !stt.classList.contains("done")) {
+              stt.textContent = "no result";
+              stt.classList.add("err");
+            }
+          });
+          st.currentAssistant = null; st.currentReasoning = null;
+          // turn finished: the caret is removed from all bubbles, the list scrolls to the end —
+          // the final markdown and closing the reasoning block change the height
+          updateCaret(st);
+          scrollBottom(st);
+          break;
+        case "running":
+          if (!st) break;
+          st.running = op.r;
+          updateCaret(st);
+          setSendButton(st);
+          // the status depends on background chats too ("DSH busy" = at least one is working),
+          // so the header is updated always, not only for the active tab
+          updateHeader();
+          break;
+        case "title":
+          if (st) { st.title = op.text; renderTabs(); if (activeId === st.id) updateHeader(); }
+          break;
+        case "question": if (st) addQuestionCard(st, op.callId, op.questions); break;
+        case "questionClosed":
+          if (!st) break;
+          var qc = st.messages.querySelector('.qcard[data-call-id="' + op.callId + '"]');
+          if (qc && qc.querySelector(".qstatus") && !qc.querySelector(".qstatus").textContent) {
+            qc.querySelector(".qstatus").textContent = "Question closed — the agent continued without an answer.";
+          }
+          break;
+        case "chips": if (st) rebuildChips(st, op.items); break;
+        case "images": if (st) rebuildImages(st, op.items); break;
+        case "metrics":
+          if (st) { st.metricsData = op.m; if (activeId === st.id) setMetricsHeader(st); }
+          break;
+        case "tools": if (st) st.toolsList = op.items || []; break;
+        case "models":
+          if (st) {
+            var items = (op.items || []).map(function (m) { return { value: m, label: (INIT.modelLabels && INIT.modelLabels[m]) || m }; });
+            st.modelSel.setItems(items);
+            st.modelSel.setValue(op.current || (items[0] && items[0].value) || "");
+          }
+          break;
+        case "effort": if (st) st.effortSel.setValue(op.current || ""); break;
+        case "policy": if (st) st.policySel.setValue(op.current || "never"); break;
+        case "mode": if (st) st.modeSel.setValue(op.mode || "Agent"); break;
+        case "welcome":
+          if (st) {
+            addNote(st, "This is the DSH chat.\nModes: Agent — autonomous edits, Ask — analysis only, Plan — plan first.\n" +
+              "Model and effort are at the bottom; deepseek-v4-pro and deepseek-flash are available.\n" +
+              "\"+\" — an image or a file; attachments live for the whole session (until \"Reset\").\n" +
+              "Ctrl+Shift+K — ask about the selection, Ctrl+Shift+Y — edit code.\n" +
+              "A project snapshot is taken before every agent request (rollback in the \"Changes\" panel).");
+          }
+          break;
+        case "clear":
+          if (st) {
+            st.messages.innerHTML = ""; st.chips.innerHTML = ""; st.imgrows.innerHTML = "";
+            st.queue = []; st.currentAssistant = null; st.currentReasoning = null;
+            updateCaret(st);
+            renderStatus();
+          }
+          break;
+        case "focus": if (st) st.input.focus(); break;
+        case "fontScale": applyFontScale(op.scale || 100); break;
+        case "codeColors": applyCodeColors(op.colors); break;
+        case "status":
+          $("statusText").textContent = op.text || "";
+          $("status").className = op.running ? "running" : "";
+          break;
+        case "history":
+          histData = { items: op.items || [], visible: op.visible || 20 };
+          renderHistory();
+          break;
+        case "sdkStatus":
+          // DSH process state: ready/busy/starting/failed/down (see renderStatus)
+          setSdkStatus(op.state, op.detail);
+          break;
+        default: break;
+      }
+    }
+  };
+
+  // ---------- ready ----------
+  var readyTries = 0;
+  function sendReady() {
+    var fn = INIT.queryFunc && window[INIT.queryFunc];
+    if (typeof fn === "function") { toJava({ type: "ready" }); return; }
+    if (readyTries++ < 50) setTimeout(sendReady, 200);
+  }
+  sendReady();
+})();
+</script>
+</body>
+</html>
